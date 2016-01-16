@@ -1,0 +1,11 @@
+files = ["path/to/file-1.jpg", "~/file-2.png"]
+directories = ["path/to/dir-1", "~/dir-2"]
+#directories = ["~/Pictures/wall", "~/Pictures/wall/.unseen"]
+
+mode = "sequential"
+# mode = "random"
+# mode = "fixed"
+
+command = ["feh", "--bg-fill", "{}"]
+
+change_every = "1 hour"
