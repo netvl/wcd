@@ -1,11 +1,10 @@
-files = ["path/to/file-1.jpg", "~/file-2.png"]
-directories = ["path/to/dir-1", "~/dir-2"]
-#directories = ["~/Pictures/wall", "~/Pictures/wall/.unseen"]
+#files = ["path/to/file-1.jpg", "~/file-2.png"]
+#directories = ["path/to/dir-1", "~/dir-2"]
+directories = ["~/Pictures/walllist"]
 
-mode = "sequential"
-# mode = "random"
-# mode = "fixed"
+# mode = "sequential"
+mode = "Random"
 
 command = ["feh", "--bg-fill", "{}"]
 
-change_every = "1 hour"
+change_every = "12 hours"

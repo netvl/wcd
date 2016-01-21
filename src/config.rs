@@ -7,7 +7,7 @@ use std::slice;
 use std::borrow::Cow;
 
 use toml::{self, DecodeError, ParserError};
-use rustc_serialize::Decodable;
+use rustc_serialize::{Decodable, Decoder};
 use chrono::Duration;
 
 use util;
@@ -46,11 +46,20 @@ quick_error! {
     }
 }
 
-#[derive(RustcDecodable, Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ChangeMode {
     Sequential,
-    Random,
-    Fixed
+    Random
+}
+
+impl Decodable for ChangeMode {
+    fn decode<D: Decoder>(d: &mut D) -> Result<ChangeMode, D::Error> {
+        d.read_str().and_then(|s| match s.to_lowercase().as_ref() {
+            "sequential" => Ok(ChangeMode::Sequential),
+            "random" => Ok(ChangeMode::Random),
+            something_else => Err(d.error(&format!("invalid change mode: {}", something_else)))
+        })
+    }
 }
 
 #[derive(RustcDecodable, Debug, Clone)]
@@ -59,7 +68,7 @@ pub struct Config {
     pub directories: Vec<String>,
     pub command: Vec<String>,
     pub mode: ChangeMode,
-    pub change_every: Option<String>
+    pub change_every: String
 }
 
 impl Config {
@@ -71,9 +80,8 @@ impl Config {
         self.directories.iter().map(util::str_to_path_0)
     }
 
-    pub fn change_every(&self) -> Option<Duration> {
-        self.change_every.as_ref()
-            .map(|s| util::parse_duration(s).unwrap())
+    pub fn change_every(&self) -> Duration {
+        util::parse_duration(&self.change_every).unwrap()
     }
 }
 
@@ -93,13 +101,9 @@ pub fn load(path: &Path) -> Result<Config, ConfigError> {
     Config::decode(&mut toml::Decoder::new(config_value))
         .map_err(From::from)
         .and_then(|config| {
-            let result = match config.change_every.as_ref() {
-                Some(d) => match util::parse_duration(d) {
-                    Some(_) => Ok(()),
-                    None => Err(format!("invalid duration format: {}", d).into())
-                },
-                None => Ok(())
-            };
-            result.map(|_| config)
+            match util::parse_duration(&config.change_every) {
+                Some(_) => Ok(config),
+                None => Err(format!("invalid duration format: {}", config.change_every).into())
+            }
         })
 }

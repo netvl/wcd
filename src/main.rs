@@ -5,14 +5,23 @@ extern crate toml;
 extern crate rustc_serialize;
 extern crate docopt;
 extern crate chrono;
+extern crate rand;
+extern crate chan_signal;
+#[macro_use] extern crate chan;
 
 use std::borrow::Cow;
 use std::path::Path;
 use std::io::{self, Write};
-use std::process;
+use std::process::{self, Command};
 use std::fs;
+use std::fmt::Write as FmtWrite;
+use std::thread;
+use std::time::Duration as StdDuration;
 
 use docopt::Docopt;
+use chrono::{DateTime, UTC};
+use rand::Rng;
+use chan_signal::Signal;
 
 use config::{Config, ChangeMode};
 
@@ -31,6 +40,9 @@ Options:
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 fn main() {
+    // prepare sighup listener
+    let signal = chan_signal::notify(&[Signal::HUP, Signal::INT, Signal::TERM]);
+
     env_logger::init().unwrap();
 
     let args = Docopt::new(USAGE)
@@ -53,8 +65,8 @@ fn main() {
 
     debug!("Loaded configuration: {:#?}", config);
 
-    let image_files_list = build_image_files_list(&config);
-    debug!(
+    let mut image_files_list = build_image_files_list(&config);
+    info!(
         "Scanned {} files and {} directories, found {} valid image files total",
         config.files.len(), config.directories.len(), image_files_list.len()
     );
@@ -64,9 +76,58 @@ fn main() {
         return;
     }
 
-    if config.mode == ChangeMode::Fixed {
-    } else {
+    // shuffle the list if necessary
+    if let ChangeMode::Random = config.mode {
+        rand::thread_rng().shuffle(&mut image_files_list);
+    }
 
+    // prepare the wall changing command
+    let command = match ChangeCommand::from_config(&config) {
+        Ok(command) => command,
+        Err(msg) => {
+            error!("Error preparing command: {}", msg);
+            return;
+        }
+    };
+
+    fn past_timestamp() -> DateTime<UTC> {
+        DateTime::parse_from_str("0+0000", "%s%z")
+                .unwrap()
+                .with_timezone(&UTC)
+    }
+
+    let mut last_timestamp = past_timestamp();
+    let mut last_index = image_files_list.len()-1;
+    loop {
+        chan_select! {
+            default => {
+                thread::sleep(StdDuration::from_secs(1));  // sleep 1 second
+            },
+            signal.recv() -> value => {
+                match value {
+                    Some(Signal::HUP) => {
+                        // reset the timestamp to force the next change
+                        last_timestamp = past_timestamp();
+                    },
+                    _ => {
+                        break;
+                    }
+                }
+            },
+        }
+
+        let current_timestamp = UTC::now();
+        let difference = current_timestamp - last_timestamp;
+
+        // change wallpaper if time has come
+        if difference > config.change_every() {
+            let new_index = (last_index + 1) % image_files_list.len();
+            info!("Changing wallpaper to {}", image_files_list[new_index].display());
+
+            command.execute(&image_files_list[new_index]);
+            last_index = new_index;
+            last_timestamp = current_timestamp;
+        }
     }
 }
 
@@ -127,4 +188,58 @@ fn check_file_format(file: &Path) -> bool {
 
 fn check_file_access(file: &Path) -> io::Result<bool> {
     fs::metadata(file).map(|m| m.is_file())
+}
+
+struct ChangeCommand {
+    name: String,
+    args: Vec<String>
+}
+
+impl ChangeCommand {
+    fn from_config(config: &Config) -> Result<ChangeCommand, &'static str> {
+        if config.command.is_empty() {
+            Err("command is not configured")
+        } else {
+            let mut parts = config.command.iter();
+            let name = parts.next().unwrap().clone();  // won't fail
+            let args: Vec<_> = parts.map(|s| s.clone()).collect();
+            if args.iter().any(|a| a == "{}") {
+                Ok(ChangeCommand {
+                    name: name,
+                    args: args
+                })
+            } else {
+                Err("none of command arguments are a placeholder")
+            }
+        }
+    }
+
+    fn execute(&self, file: &Path) {
+        let args: Vec<&str> = self.args.iter()
+            .filter_map(|a| if a == "{}" { file.to_str() } else { Some(a) })
+            .collect();
+        debug!("Executing command {} with arguments: {:?}", self.name, args);
+        let status = Command::new(&self.name).args(&args).status();
+        match status {
+            Ok(ref status) if status.success() => {},
+            status => {
+                let mut args_str = String::new();
+                for a in args.iter() {
+                    let _ = write!(&mut args_str, "\"{}\"", a);
+                }
+                let command_str = format!("\"{}\" {}", self.name, args_str);
+
+                match status {
+                    Ok(status) => match status.code() {
+                        Some(code) =>
+                            warn!("command {} has exited with code {}", command_str, code),
+                        None =>
+                            warn!("command {} has exited without status code", command_str)
+                    },
+                    Err(e) =>
+                        warn!("failed to start command {}: {}", command_str, e)
+                }
+            }
+        }
+    }
 }
