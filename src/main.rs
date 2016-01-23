@@ -101,6 +101,7 @@ fn main() {
     loop {
         chan_select! {
             default => {
+                update_image_files_list(&config, &mut image_files_list);
                 thread::sleep(StdDuration::from_secs(1));  // sleep 1 second
             },
             signal.recv() -> value => {
@@ -120,13 +121,24 @@ fn main() {
         let difference = current_timestamp - last_timestamp;
 
         // change wallpaper if time has come
-        if difference > config.change_every() {
-            let new_index = (last_index + 1) % image_files_list.len();
-            info!("Changing wallpaper to {}", image_files_list[new_index].display());
+        loop {
+            if difference > config.change_every() {
+                let new_index = (last_index + 1) % image_files_list.len();
+                last_index = new_index;
 
-            command.execute(&image_files_list[new_index]);
-            last_index = new_index;
-            last_timestamp = current_timestamp;
+                let new_path: &Path = &image_files_list[new_index];
+
+                if !check_file(new_path) {
+                    warn!("Cannot access {}, skipping it", new_path.display());
+                    continue;
+                }
+
+                info!("Changing wallpaper to {}", new_path.display());
+                command.execute(new_path);
+
+                last_timestamp = current_timestamp;
+            }
+            break;
         }
     }
 }
@@ -147,6 +159,32 @@ fn build_image_files_list(config: &Config) -> Vec<Cow<Path>> {
     }
 
     files
+}
+
+fn update_image_files_list(config: &Config, existing_files: &mut Vec<Cow<Path>>) {
+    for dir in config.directories() {
+        match rescan_directory(&dir, existing_files) {
+            Ok(new_paths) => {
+                if !new_paths.is_empty() {
+                    info!("Discovered {} more files in directory {}", new_paths.len(), dir.display());
+                    existing_files.extend(new_paths);
+                }
+            },
+            Err(e) => warn!("Error reading directory {}: {}", dir.display(), e)
+        }
+    }
+}
+
+fn rescan_directory(dir: &Path, existing_files: &[Cow<Path>]) -> io::Result<Vec<Cow<'static, Path>>> {
+    let mut result = Vec::new();
+    for entry in try!(fs::read_dir(dir)) {
+        let entry = try!(entry);
+        let path = entry.path();
+        if !existing_files.iter().map(|p| p.as_ref()).any(|p| p == path && check_file(&p)) {
+            result.push(path.into());
+        }
+    }
+    Ok(result)
 }
 
 fn scan_directory(dir: &Path, files: &mut Vec<Cow<Path>>) -> io::Result<()> {
