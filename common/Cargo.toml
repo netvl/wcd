@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 
 [dependencies]
+toml = "0.1"
+quick-error = "0.2"
+rustc-serialize = "0.3"
+chrono = "0.2"

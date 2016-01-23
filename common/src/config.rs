@@ -63,7 +63,12 @@ impl Decodable for ChangeMode {
 }
 
 #[derive(RustcDecodable, Debug, Clone)]
-pub struct Config {
+pub struct CommonConfig {
+    pub endpoint: String
+}
+
+#[derive(RustcDecodable, Debug, Clone)]
+pub struct ServerConfig {
     pub files: Vec<String>,
     pub directories: Vec<String>,
     pub command: Vec<String>,
@@ -71,7 +76,13 @@ pub struct Config {
     pub change_every: String
 }
 
-impl Config {
+#[derive(RustcDecodable, Debug, Clone)]
+pub struct Config {
+    pub common: CommonConfig,
+    pub server: ServerConfig,
+}
+
+impl ServerConfig {
     pub fn files(&self) -> iter::Map<slice::Iter<String>, fn(&String) -> Cow<Path>> {
         self.files.iter().map(util::str_to_path_0)
     }
@@ -101,9 +112,10 @@ pub fn load(path: &Path) -> Result<Config, ConfigError> {
     Config::decode(&mut toml::Decoder::new(config_value))
         .map_err(From::from)
         .and_then(|config| {
-            match util::parse_duration(&config.change_every) {
+            match util::parse_duration(&config.server.change_every) {
                 Some(_) => Ok(config),
-                None => Err(format!("invalid duration format: {}", config.change_every).into())
+                None => Err(format!("invalid duration format: {}", config.server.change_every).into())
             }
         })
 }
+

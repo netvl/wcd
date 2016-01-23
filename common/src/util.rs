@@ -51,3 +51,4 @@ pub fn parse_duration(s: &str) -> Option<Duration> {
     let n = digits.parse().unwrap();  // always correct
     Some(mk_duration(n))
 }
+

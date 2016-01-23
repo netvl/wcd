@@ -1,3 +1,7 @@
+[common]
+endpoint = "ipc:///tmp/wcd.ipc"
+
+[server]
 #files = ["path/to/file-1.jpg", "~/file-2.png"]
 #directories = ["path/to/dir-1", "~/dir-2"]
 directories = ["/tmp/wchtest"]
@@ -7,4 +11,6 @@ mode = "Random"
 
 command = ["echo", "{}"]
 
-change_every = "5 seconds"
+change_every = "5 minutes"
+
+# TODO: playlists support

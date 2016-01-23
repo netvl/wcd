@@ -4,3 +4,8 @@ version = "0.1.0"
 authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 
 [dependencies]
+wcd-common = { path = "../common" }
+rustc-serialize = "0.3"
+docopt = "0.6"
+nanomsg = "0.4"
+bincode = "0.4"
