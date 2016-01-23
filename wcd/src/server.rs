@@ -24,11 +24,6 @@ pub fn start(config: ServerConfig,
             config.files.len(), config.directories.len(), image_files_list.len()
         );
 
-        if image_files_list.is_empty() {
-            info!("No images found, exiting");
-            return;
-        }
-
         // shuffle the list if necessary
         if let ChangeMode::Random = config.mode {
             rand::thread_rng().shuffle(&mut image_files_list);
@@ -80,25 +75,27 @@ pub fn start(config: ServerConfig,
             let current_timestamp = UTC::now();
             let difference = current_timestamp - last_timestamp;
 
-            // change wallpaper if time has come
-            loop {
-                if difference > config.change_every() {
-                    let new_index = (last_index + 1) % image_files_list.len();
-                    last_index = new_index;
+            if !image_files_list.is_empty() {
+                // change wallpaper if time has come
+                loop {
+                    if difference > config.change_every() {
+                        let new_index = (last_index + 1) % image_files_list.len();
+                        last_index = new_index;
 
-                    let new_path: &Path = &image_files_list[new_index];
+                        let new_path: &Path = &image_files_list[new_index];
 
-                    if !check_file(new_path) {
-                        warn!("Cannot access {}, skipping it", new_path.display());
-                        continue;
+                        if !check_file(new_path) {
+                            warn!("Cannot access {}, skipping it", new_path.display());
+                            continue;
+                        }
+
+                        info!("Changing wallpaper to {}", new_path.display());
+                        command.execute(new_path);
+
+                        last_timestamp = current_timestamp;
                     }
-
-                    info!("Changing wallpaper to {}", new_path.display());
-                    command.execute(new_path);
-
-                    last_timestamp = current_timestamp;
+                    break;
                 }
-                break;
             }
         }
     })

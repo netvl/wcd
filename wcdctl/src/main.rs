@@ -12,7 +12,7 @@ use bincode::SizeLimit;
 use bincode::rustc_serialize::{decode_from, encode_into};
 
 use wcd_common::{util, config};
-use wcd_common::proto::{ControlRequest, ControlResponse};
+use wcd_common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope};
 
 const USAGE: &'static str = r"
 Usage: wcdctl [options] ping
@@ -59,7 +59,6 @@ fn main() {
         .unwrap_or_else(|e| abort!(1, "Cannot load configuration file {}: {}", config_path.display(), e));
 
     let endpoint = config.common.endpoint;
-    println!("Configured endpoint: {}", endpoint);
 
     let mut socket = Socket::new(Protocol::Pair)
         .unwrap_or_else(|e| abort!(1, "Error creating nanomsg socket: {}", e));
@@ -77,11 +76,20 @@ fn main() {
         abort!(1, "Unknown command");
     };
 
-    encode_into(&req, &mut socket, SizeLimit::Infinite)
+    let envelope = ControlEnvelope {
+        version: proto::VERSION.into(),
+        content: req
+    };
+
+    encode_into(&envelope, &mut socket, SizeLimit::Infinite)
         .unwrap_or_else(|e| abort!(1, "Error sending request: {}", e));
 
-    let resp: ControlResponse = decode_from(&mut socket, SizeLimit::Infinite)
+    let ControlEnvelope { version, content: resp } = decode_from(&mut socket, SizeLimit::Infinite)
         .unwrap_or_else(|e| abort!(1, "Error receiving response: {}", e));
+    if version != proto::VERSION {
+        abort!(1, "Received response with invalid version {}, expected {}", version, proto::VERSION);
+    }
+    let resp: ControlResponse = resp;
 
     println!("{:?}", resp);
 
