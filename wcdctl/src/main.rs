@@ -17,6 +17,10 @@ use wcd_common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope};
 const USAGE: &'static str = r"
 Usage: wcdctl [options] ping
        wcdctl [options] trigger
+       wcdctl [options] update
+       wcdctl [options] terminate
+       wcdctl [options] status
+       wcdctl [options] set-playlist <name>
        wcdctl (--help | --version)
 
 Options:
@@ -31,8 +35,14 @@ struct Args {
     flag_version: bool,
     flag_config: String,
 
+    arg_name: String,
+
     cmd_ping: bool,
     cmd_trigger: bool,
+    cmd_update: bool,
+    cmd_terminate: bool,
+    cmd_status: bool,
+    cmd_set_playlist: bool,
 }
 
 const VERSION: &'static str = env!("CARGO_PKG_VERSION");
@@ -72,6 +82,14 @@ fn main() {
         ControlRequest::Ping       
     } else if args.cmd_trigger {
         ControlRequest::TriggerChange
+    } else if args.cmd_update {
+        ControlRequest::ForceUpdate
+    } else if args.cmd_terminate {
+        ControlRequest::Terminate
+    } else if args.cmd_status {
+        ControlRequest::GetStatus
+    } else if args.cmd_set_playlist {
+        ControlRequest::ChangePlaylist(args.arg_name)
     } else {
         abort!(1, "Unknown command");
     };
@@ -91,7 +109,7 @@ fn main() {
     }
     let resp: ControlResponse = resp;
 
-    println!("{:?}", resp);
+    println!("{:#?}", resp);
 
     ep.shutdown()
         .unwrap_or_else(|e| abort!(1, "Error closing socket endpoint: {}", e));

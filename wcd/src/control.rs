@@ -1,9 +1,11 @@
 use std::thread::{self, JoinHandle};
+use std::time::Duration as StdDuration;
+use std::io;
 
 use chan::{self, Receiver, Sender};
 use nanomsg::{Socket, Protocol};
 use bincode::SizeLimit;
-use bincode::rustc_serialize::{decode_from, encode_into};
+use bincode::rustc_serialize::{decode_from, encode_into, DecodingError};
 
 use wcd_common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope};
 
@@ -20,10 +22,18 @@ pub fn start(endpoint: String) -> (Receiver<ControlRequest>, Sender<ControlRespo
             }
         };
 
-        let _ep = match socket.bind(&endpoint) {
+        match socket.set_receive_timeout(1000) {
+            Ok(_) => {},
+            Err(e) => {
+                error!("Failed to set control socket receive timeout: {}", e);
+                return;
+            }
+        }
+
+        let mut ep = match socket.bind(&endpoint) {
             Ok(ep) => ep,
             Err(e) => {
-                warn!("Error binding control socket to {}: {}", endpoint, e);
+                error!("Failed to bind control socket to {}: {}", endpoint, e);
                 return;
             }
         };
@@ -51,7 +61,7 @@ pub fn start(endpoint: String) -> (Receiver<ControlRequest>, Sender<ControlRespo
                                 }
                             }
                             None => {
-                                warn!("Server channel closed unexpectedly, stopping the control socket");
+                                error!("Control channel was broken unexpectedly, exiting");
                                 break;
                             }
                         }
@@ -59,10 +69,25 @@ pub fn start(endpoint: String) -> (Receiver<ControlRequest>, Sender<ControlRespo
                         warn!("Received control request with invalid version {}, expected {}", version, proto::VERSION);
                     }
                 }
+                Err(DecodingError::IoError(ref e)) if e.kind() == io::ErrorKind::TimedOut => {
+                    chan_select! {
+                        default => {},  // okay, do nothing
+                        control_resp_recv.recv() => {  
+                            // we can only get here if the remote end of the channel was dropped
+                            info!("Control channel was broken, exiting");
+                            break;
+                        }
+                    }
+                }
                 Err(e) => {
                     error!("Error reading request: {}", e);
+                    thread::sleep(StdDuration::from_secs(1));  // just in case
                 }
             }
+        }
+
+        if let Err(e) = ep.shutdown() {
+            warn!("Failed to shut down socket endpoint: {}", e);
         }
     });
 

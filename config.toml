@@ -2,15 +2,24 @@
 endpoint = "ipc:///tmp/wcd.ipc"
 
 [server]
-#files = ["path/to/file-1.jpg", "~/file-2.png"]
-#directories = ["path/to/dir-1", "~/dir-2"]
-directories = ["/tmp/wchtest"]
+default_playlist = "default"
+watch = "1 minute"
+# watch = "disabled"
+# watch = "auto"  # inotify, in future versions
 
+[server.defaults]
 # mode = "sequential"
-mode = "Random"
-
+mode = "random"
+change_every = "5 minutes"
+trigger_on_select = true
+use_last_on_select = true
 command = ["echo", "{}"]
 
-change_every = "5 minutes"
+[server.playlists.default]
+directories = ["/tmp/wchtest"]
+change_every = "1 minute"
 
-# TODO: playlists support
+[server.playlists.sfw]
+directories = ["/tmp/safe"]
+mode = "sequential"
+
