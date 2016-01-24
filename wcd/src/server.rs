@@ -128,34 +128,42 @@ impl State {
                 default => {
                     thread::sleep(StdDuration::from_secs(1));  // sleep 1 second
                 },
+                // handle control signals
                 control_req_recv.recv() -> value => {
                     if let Some(value) = value {
                         match value {
-                            ControlRequest::Ping => control_resp_send.send(ControlResponse::PingOk),
                             ControlRequest::TriggerChange => {
                                 self.last_timestamp = past_timestamp();
                                 control_resp_send.send(ControlResponse::TriggerChangeOk);
                             }
-                            ControlRequest::ForceUpdate => {
+
+                            ControlRequest::RefreshPlaylists => {
                                 self.last_watch_timestamp = past_timestamp();
-                                control_resp_send.send(ControlResponse::ForceUpdateOk);
+                                control_resp_send.send(ControlResponse::RefreshPlaylistsOk);
                             }
+
                             ControlRequest::Terminate => {
                                 info!("Received termination request from client, exiting");
                                 control_resp_send.send(ControlResponse::TerminateOk);
                                 break;
                             }
+
                             ControlRequest::GetStatus => {
                                 let mut result = HashMap::new();
                                 for (name, playlist) in playlist_indices.iter()
                                     .map(|(name, idx)| (name, &playlists[*idx])) {
                                     let files = playlist.images.len();
                                     let mode = proto::ChangeMode::from_config(playlist.config.mode);
-                                    let current_image = playlist.current.map(|idx| playlist.images[idx].path.display().to_string());
+                                    let current_image = playlist.current
+                                        .map(|idx| playlist.images[idx].path.display().to_string());
+                                    let change_every = playlist.config.change_every;
                                     result.insert(name.clone(), proto::PlaylistInfo {
                                         files: files as u64,
                                         mode: mode,
-                                        current_image: current_image
+                                        current_image: current_image,
+                                        next_update: (self.last_timestamp + change_every).timestamp(),
+                                        use_last_on_select: playlist.config.use_last_on_select,
+                                        trigger_on_select: playlist.config.trigger_on_select
                                     });
                                 }
                                 let current_playlist = playlist_indices.iter()
@@ -163,7 +171,8 @@ impl State {
                                     .unwrap().0.clone();
                                 control_resp_send.send(ControlResponse::StatusInfo {
                                     playlists: result,
-                                    current_playlist: current_playlist
+                                    current_playlist: current_playlist,
+                                    last_update: self.last_timestamp.timestamp()
                                 });
                             }
                             ControlRequest::ChangePlaylist(name) => {

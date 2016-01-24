@@ -3,6 +3,7 @@ name = "wcdctl"
 version = "0.1.0"
 dependencies = [
  "bincode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chrono 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.78 (registry+https://github.com/rust-lang/crates.io-index)",
  "nanomsg 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",

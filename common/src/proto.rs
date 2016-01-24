@@ -6,9 +6,8 @@ pub const VERSION: u32 = 1;
 
 #[derive(RustcDecodable, RustcEncodable, Debug, Clone, PartialEq)]
 pub enum ControlRequest {
-    Ping,
     TriggerChange,
-    ForceUpdate,
+    RefreshPlaylists,
     Terminate,
 
     GetStatus,
@@ -18,14 +17,14 @@ pub enum ControlRequest {
 
 #[derive(RustcDecodable, RustcEncodable, Debug, Clone, PartialEq)]
 pub enum ControlResponse {
-    PingOk,
     TriggerChangeOk,
-    ForceUpdateOk,
+    RefreshPlaylistsOk,
     TerminateOk,
 
     StatusInfo {
         playlists: HashMap<String, PlaylistInfo>,
         current_playlist: String,
+        last_update: i64
     },
 
     ChangePlaylistOk,
@@ -42,7 +41,10 @@ pub struct ControlEnvelope<T> {
 pub struct PlaylistInfo {
     pub files: u64,
     pub mode: ChangeMode,
-    pub current_image: Option<String>
+    pub current_image: Option<String>,
+    pub trigger_on_select: bool,
+    pub use_last_on_select: bool,
+    pub next_update: i64,
 }
 
 #[derive(RustcDecodable, RustcEncodable, Debug, Clone, PartialEq)]
