@@ -39,7 +39,9 @@ pub struct ControlEnvelope<T> {
 
 #[derive(RustcDecodable, RustcEncodable, Debug, Clone, PartialEq)]
 pub struct PlaylistInfo {
-    pub files: u64,
+    pub directories: Vec<String>,
+    pub files: Vec<String>,
+    pub total_files: u64,
     pub mode: ChangeMode,
     pub current_image: Option<String>,
     pub trigger_on_select: bool,

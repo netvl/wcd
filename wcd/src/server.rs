@@ -158,7 +158,13 @@ impl State {
                                         .map(|idx| playlist.images[idx].path.display().to_string());
                                     let change_every = playlist.config.change_every;
                                     result.insert(name.clone(), proto::PlaylistInfo {
-                                        files: files as u64,
+                                        directories: playlist.config.directories.iter()
+                                            .map(|pb| pb.to_string_lossy().into_owned())
+                                            .collect(),
+                                        files: playlist.config.files.iter()
+                                            .map(|pb| pb.to_string_lossy().into_owned())
+                                            .collect(),
+                                        total_files: files as u64,
                                         mode: mode,
                                         current_image: current_image,
                                         next_update: (self.last_timestamp + change_every).timestamp(),

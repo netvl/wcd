@@ -153,18 +153,30 @@ impl fmt::Display for TimestampDisplay {
 }
 
 fn print_playlist(name: String, playlist: PlaylistInfo) {
-    println!("{}:", name);
-    println!("  Files: {}", playlist.files);
-    println!("  Change mode: {}", match playlist.mode {
+    println!("  {}:", name);
+    if !playlist.files.is_empty() {
+        println!("    Configured files:");
+        for file in playlist.files {
+            println!("      {}", file);
+        }
+    }
+    if !playlist.directories.is_empty() {
+        println!("    Configured directories:");
+        for dir in playlist.directories {
+            println!("      {}", dir);
+        }
+    }
+    println!("    Total files number: {}", playlist.total_files);
+    println!("    Change mode: {}", match playlist.mode {
         ChangeMode::Sequential => "sequential",
         ChangeMode::Random => "random",
     });
-    println!("  Current image: {}", OptionDisplay(playlist.current_image));
-    println!("  Trigger wallpaper change on select: {}", BoolDisplay(playlist.trigger_on_select));
+    println!("    Current image: {}", OptionDisplay(playlist.current_image));
+    println!("    Trigger wallpaper change on select: {}", BoolDisplay(playlist.trigger_on_select));
     if playlist.trigger_on_select {
-        println!("  Use last used wallpaper on select: {}", BoolDisplay(playlist.use_last_on_select));
+        println!("    Use last used wallpaper on select: {}", BoolDisplay(playlist.use_last_on_select));
     }
-    println!("  Next change time: {}", TimestampDisplay(playlist.next_update));
+    println!("    Next change time: {}", TimestampDisplay(playlist.next_update));
     //pub next_update: i64,
 }
 

@@ -22,4 +22,5 @@ change_every = "1 minute"
 [server.playlists.sfw]
 directories = ["/tmp/safe"]
 mode = "sequential"
+use_last_on_select = false
 
