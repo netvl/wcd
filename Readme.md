@@ -30,7 +30,7 @@ and run the following command to install the client binary:
 ```
 
 These commands will install the respective binaries to wherever your Cargo binaries
-directory is loaded (usually it is `~/.cargo/bin`), so in order to run them, you need to make
+directory is located (usually it is `~/.cargo/bin`), so in order to run them, you need to make
 sure that this directory is added to your `PATH`.
 
 While wcd does not use compiler features and therefore could theoretically be compiled with
