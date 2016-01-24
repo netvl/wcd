@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use config;
 
-pub const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+pub const VERSION: u32 = 1;
 
 #[derive(RustcDecodable, RustcEncodable, Debug, Clone, PartialEq)]
 pub enum ControlRequest {
@@ -34,7 +34,7 @@ pub enum ControlResponse {
 
 #[derive(RustcDecodable, RustcEncodable, Debug, Clone, PartialEq)]
 pub struct ControlEnvelope<T> {
-    pub version: String,
+    pub version: u32,
     pub content: T
 }
 

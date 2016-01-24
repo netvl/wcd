@@ -30,6 +30,14 @@ pub fn start(endpoint: String) -> (Receiver<ControlRequest>, Sender<ControlRespo
             }
         }
 
+        match socket.set_send_timeout(3000) {
+            Ok(_) => {},
+            Err(e) => {
+                error!("Failed to set control socket send timeout: {}", e);
+                return;
+            }
+        }
+
         let mut ep = match socket.bind(&endpoint) {
             Ok(ep) => ep,
             Err(e) => {
