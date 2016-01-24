@@ -1,4 +1,9 @@
 use std::collections::HashMap;
+use std::io::{self, Read, Write};
+
+use bincode::SizeLimit;
+use bincode::rustc_serialize::{DecodingResult, DecodingError, decode, EncodingResult, EncodingError, encode};
+use rustc_serialize::{Decodable, Encodable};
 
 use config;
 
@@ -62,4 +67,51 @@ impl ChangeMode {
             config::ChangeMode::Random => ChangeMode::Random
         }
     }
+}
+
+pub fn read_message<R: Read + ?Sized, T: Decodable>(r: &mut R) -> DecodingResult<T> {
+    // read the size and deserialize it into a big-endian u32
+    let mut size_buf = [0u8; 4];
+    if try!(r.read(&mut size_buf)) < 4 {
+        return Err(DecodingError::IoError(
+            io::Error::new(io::ErrorKind::UnexpectedEof, "size message is too small")
+        ));
+    }
+    let size: u32 = ((size_buf[0] as u32) << 24) | 
+                    ((size_buf[1] as u32) << 16) | 
+                    ((size_buf[2] as u32) << 8) | 
+                    size_buf[3] as u32;
+
+    // read the data message
+    let mut data_buf = vec![0u8; size as usize];
+    let bytes_read = try!(r.read(&mut data_buf));
+    if bytes_read < size as usize {
+        Err(DecodingError::IoError(
+            io::Error::new(
+                io::ErrorKind::UnexpectedEof, 
+                format!("data message is too small: {}, expected {}", bytes_read, size)
+            )
+        ))
+    } else {
+        // and decode it
+        decode(&data_buf)
+    }
+}
+
+pub fn write_message<W: Write + ?Sized, T: Encodable>(w: &mut W, value: &T) -> EncodingResult<()> {
+    // first encode the data message
+    let data = try!(encode(value, SizeLimit::Infinite));
+
+    // compute a big-endian size representation and write it
+    let size = data.len() as u32;
+    let size_buf = [
+        ((size >> 24) & 0xFF) as u8,
+        ((size >> 16) & 0xFF) as u8,
+        ((size >> 8) & 0xFF) as u8,
+        (size & 0xFF) as u8
+    ];
+    try!(w.write_all(&size_buf).map_err(EncodingError::IoError));
+
+    // write the data message
+    w.write_all(&data).map_err(EncodingError::IoError)
 }

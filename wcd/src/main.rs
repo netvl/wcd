@@ -26,7 +26,7 @@ const USAGE: &'static str = r"
 Usage: wcd [options]
 
 Options:
-    -c FILE, --config FILE  path to configuration file [default: ~/.config/wchangerd/config.toml]
+    -c FILE, --config FILE  path to configuration file [default: ~/.config/wcd/config.toml]
     -h, --help              show this message
     -v, --version           show version information
 ";

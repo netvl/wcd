@@ -10,8 +10,6 @@ use std::fmt;
 
 use docopt::Docopt;
 use nanomsg::{Socket, Protocol};
-use bincode::SizeLimit;
-use bincode::rustc_serialize::{decode_from, encode_into};
 
 use wcd_common::{util, config};
 use wcd_common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope, PlaylistInfo, ChangeMode};
@@ -22,11 +20,13 @@ Usage: wcdctl [options] trigger
        wcdctl [options] refresh
        wcdctl [options] terminate
        wcdctl [options] status
-       wcdctl [options] set-playlist <name>
+       wcdctl [options] set-playlist [--or-trigger] <name>
        wcdctl (--help | --version)
 
 Options:
     -c FILE, --config FILE  path to configuration file [default: ~/.config/wcd/config.toml]
+    --or-trigger            if the given playlist is already current, trigger the wallpaper
+                            change
     -h, --help              show this message
     -v, --version           show version information
 
@@ -46,6 +46,7 @@ struct Args {
     flag_help: bool,
     flag_version: bool,
     flag_config: String,
+    flag_or_trigger: bool,
 
     arg_name: String,
 
@@ -89,35 +90,61 @@ fn main() {
     let mut ep = socket.connect(&endpoint)
         .unwrap_or_else(|e| abort!(1, "Error connecting socket to {}: {}", endpoint, e));
 
-    let req = if args.cmd_trigger {
-        ControlRequest::TriggerChange
-    } else if args.cmd_refresh {
-        ControlRequest::RefreshPlaylists
-    } else if args.cmd_terminate {
-        ControlRequest::Terminate
-    } else if args.cmd_status {
-        ControlRequest::GetStatus
-    } else if args.cmd_set_playlist {
-        ControlRequest::ChangePlaylist(args.arg_name)
-    } else {
-        abort!(1, "Unknown command");
-    };
+    if !args.flag_or_trigger {
+        let req = if args.cmd_trigger {
+            ControlRequest::TriggerChange
+        } else if args.cmd_refresh {
+            ControlRequest::RefreshPlaylists
+        } else if args.cmd_terminate {
+            ControlRequest::Terminate
+        } else if args.cmd_status {
+            ControlRequest::GetStatus
+        } else if args.cmd_set_playlist {
+            ControlRequest::ChangePlaylist(args.arg_name)
+        } else {
+            abort!(1, "Unknown command");
+        };
 
+        display_response(make_request(&mut socket, req));
+
+    } else {  // change playlist or trigger change, if needed
+        match make_request(&mut socket, ControlRequest::GetStatus) {
+            ControlResponse::StatusInfo { current_playlist, .. } => {
+                let req = if args.arg_name == current_playlist {
+                    ControlRequest::TriggerChange
+                } else {
+                    ControlRequest::ChangePlaylist(args.arg_name)
+                };
+
+                display_response(make_request(&mut socket, req))
+            }
+            _ => abort!(1, "Unexpected server response")
+        }
+    }
+
+    ep.shutdown()
+        .unwrap_or_else(|e| abort!(1, "Error closing socket endpoint: {}", e));
+}
+
+fn make_request(socket: &mut Socket, req: ControlRequest) -> ControlResponse {
     let envelope = ControlEnvelope {
         version: proto::VERSION.into(),
         content: req
     };
 
-    encode_into(&envelope, &mut socket, SizeLimit::Infinite)
+    proto::write_message(socket, &envelope)
         .unwrap_or_else(|e| abort!(1, "Error sending request: {}", e));
 
-    let ControlEnvelope { version, content: resp } = decode_from(&mut socket, SizeLimit::Infinite)
+    let ControlEnvelope { version, content: resp } = proto::read_message(socket)
         .unwrap_or_else(|e| abort!(1, "Error receiving response: {}", e));
     if version != proto::VERSION {
         abort!(1, "Received response with invalid version {}, expected {}", version, proto::VERSION);
     }
-    let resp: ControlResponse = resp;
 
+    resp
+}
+
+fn display_response(resp: ControlResponse) {
     match resp {
         ControlResponse::TriggerChangeOk => {}
         ControlResponse::RefreshPlaylistsOk => {}
@@ -138,9 +165,6 @@ fn main() {
             }
         }
     }
-
-    ep.shutdown()
-        .unwrap_or_else(|e| abort!(1, "Error closing socket endpoint: {}", e));
 }
 
 struct TimestampDisplay(i64);
@@ -177,7 +201,6 @@ fn print_playlist(name: String, playlist: PlaylistInfo) {
         println!("    Use last used wallpaper on select: {}", BoolDisplay(playlist.use_last_on_select));
     }
     println!("    Next change time: {}", TimestampDisplay(playlist.next_update));
-    //pub next_update: i64,
 }
 
 struct OptionDisplay<T>(Option<T>);

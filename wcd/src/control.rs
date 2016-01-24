@@ -4,8 +4,7 @@ use std::io;
 
 use chan::{self, Receiver, Sender};
 use nanomsg::{Socket, Protocol};
-use bincode::SizeLimit;
-use bincode::rustc_serialize::{decode_from, encode_into, DecodingError};
+use bincode::rustc_serialize::DecodingError;
 
 use wcd_common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope};
 
@@ -49,7 +48,7 @@ pub fn start(endpoint: String) -> (Receiver<ControlRequest>, Sender<ControlRespo
         info!("Control socket created on {}, waiting for requests", endpoint);
 
         loop {
-            match decode_from(&mut socket, SizeLimit::Infinite) {
+            match proto::read_message(&mut socket) {
                 Ok(ControlEnvelope { version, content: req }) => {
                     if version == proto::VERSION {
                         debug!("Received request from a client: {:?}", req);
@@ -61,7 +60,7 @@ pub fn start(endpoint: String) -> (Receiver<ControlRequest>, Sender<ControlRespo
                                     version: proto::VERSION.into(),
                                     content: resp
                                 };
-                                match encode_into(&envelope, &mut socket, SizeLimit::Infinite) {
+                                match proto::write_message(&mut socket, &envelope) {
                                     Ok(_) => {}
                                     Err(e) => {
                                         error!("Error writing response: {}", e);

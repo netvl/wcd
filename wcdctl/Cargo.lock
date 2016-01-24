@@ -180,6 +180,7 @@ dependencies = [
 name = "wcd-common"
 version = "0.1.0"
 dependencies = [
+ "bincode 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "quick-error 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
