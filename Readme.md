@@ -37,6 +37,12 @@ While wcd does not use compiler features and therefore could theoretically be co
 the stable Rust compiler, I use nightly Rust for development. I'll probably add a Travis
 configuration with multiple Rust versions in future to track this.
 
+Note that wcd depends on [nanomsg](http://nanomsg.org/), so you need to have its libraries
+available for the linker. Currently `nanomsg-rs` does not use pkg-config to find libraries,
+so you need to make nanomsg shared library available in the library search path (`PATH` in 
+Windows, `LD_LIBRARY_PATH` in Linux, `DYLD_LIBRARY_PATH` in OS X). On Linux it usually means
+installing the respective package with your package manager.
+
 ## Configuration
 
 Both `wcd` and `wcdctl` use the same configuration file. By default it is assumed to be
@@ -139,6 +145,9 @@ but two additional options are available:
   and `png` extensions, both in lower, upper or mixed case. These directories will also be
   rescanned automatically if watch interval is configured or manually when requested through
   `wcdctl`.
+
+Paths specified in `files` or `directories` lists may start with `~/`. These paths are resolved
+against the home directory of the user running `wcd`.
 
 ## Client
 
