@@ -5,8 +5,8 @@ use std::fmt::Write;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-use toml::{self, DecodeError, ParserError};
-use rustc_serialize::{Decodable, Decoder};
+use toml;
+use serde::{Deserialize, Deserializer, Error};
 use chrono::Duration;
 
 use util;
@@ -20,13 +20,13 @@ quick_error! {
             display("I/O error: {}", err)
             cause(err)
         }
-        Decode(err: DecodeError) {
+        Decode(err: toml::DecodeError) {
             from()
             description("TOML decoding error")
             display("TOML decoding error: {}", err)
             cause(err)
         }
-        Parse(errs: Vec<ParserError>) {
+        Parse(errs: Vec<toml::ParserError>) {
             from()
             description("TOML parse error")
             display("TOML parse error:\n{}", errs.iter().fold(String::new(), |mut s, e| {
@@ -51,48 +51,48 @@ pub enum WatchMode {
     Poll(Duration),
 }
 
-impl Decodable for WatchMode {
-    fn decode<D: Decoder>(d: &mut D) -> Result<WatchMode, D::Error> {
-        d.read_str().and_then(|s| match s.to_lowercase().as_ref() {
+impl Deserialize for WatchMode {
+    fn deserialize<D>(deserializer: &mut D) -> Result<WatchMode, D::Error> where D: Deserializer {
+        match String::deserialize(deserializer)?.as_str() {
             "disabled" => Ok(WatchMode::Disabled),
-            other => match util::parse_duration(&other) {
+            other => match util::parse_duration(other) {
                 Some(d) => Ok(WatchMode::Poll(d)),
-                None => Err(d.error(&format!("invalid watch value: {}", other)))
+                None => Err(D::Error::custom(format!("invalid watch value: {}", other))),
             }
-        })
+        }
     }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ChangeMode {
     Sequential,
-    Random
+    Random,
 }
 
-impl Decodable for ChangeMode {
-    fn decode<D: Decoder>(d: &mut D) -> Result<ChangeMode, D::Error> {
-        d.read_str().and_then(|s| match s.to_lowercase().as_ref() {
+impl Deserialize for ChangeMode {
+    fn deserialize<D>(deserializer: &mut D) -> Result<ChangeMode, D::Error> where D: Deserializer {
+        match String::deserialize(deserializer)?.as_str() {
             "sequential" => Ok(ChangeMode::Sequential),
             "random" => Ok(ChangeMode::Random),
-            something_else => Err(d.error(&format!("invalid change mode: {}", something_else)))
-        })
+            other => Err(D::Error::custom(format!("invalid mode value: {}", other))),
+        }
     }
 }
 
 // Configuration directly corresponding to the one stored in file
 
-#[derive(RustcDecodable, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     pub common: CommonConfig,
     pub server: ServerConfig,
 }
 
-#[derive(RustcDecodable, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct CommonConfig {
     pub endpoint: String
 }
 
-#[derive(RustcDecodable, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct ServerConfig {
     pub default_playlist: String,
     pub watch: Option<WatchMode>,
@@ -100,7 +100,7 @@ pub struct ServerConfig {
     pub playlists: HashMap<String, Playlist>,
 }
 
-#[derive(RustcDecodable, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Playlist {
     pub files: Vec<String>,
     pub directories: Vec<String>,
@@ -111,7 +111,7 @@ pub struct Playlist {
     pub use_last_on_select: Option<bool>,
 }
 
-#[derive(RustcDecodable, Debug, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Defaults {
     pub command: Option<Vec<String>>,
     pub mode: Option<ChangeMode>,
@@ -122,6 +122,16 @@ pub struct Defaults {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ParsedDuration(Duration);
+
+impl Deserialize for ParsedDuration {
+    fn deserialize<D>(deserializer: &mut D) -> Result<ParsedDuration, D::Error> where D: Deserializer {
+        let s = String::deserialize(deserializer)?;
+        match util::parse_duration(&s) {
+            Some(d) => Ok(ParsedDuration(d)),
+            None => Err(D::Error::custom(format!("invalid duration format: {}", s))),
+        }
+    }
+}
 
 // Configuration after validation and defaults resolution step
 
@@ -150,19 +160,10 @@ pub struct ValidatedPlaylist {
     pub use_last_on_select: bool,
 }
 
-impl Decodable for ParsedDuration {
-    fn decode<D: Decoder>(d: &mut D) -> Result<ParsedDuration, D::Error> {
-        let s = try!(d.read_str());
-        util::parse_duration(&s)
-            .map(ParsedDuration)
-            .ok_or_else(|| d.error(&format!("invalid duration format: {}", s)))
-    }
-}
-
 pub fn load(path: &Path) -> Result<ValidatedConfig, ConfigError> {
-    let mut file = try!(File::open(path));
+    let mut file = File::open(path)?;
     let mut data = String::new();
-    let _ = try!(file.read_to_string(&mut data));
+    file.read_to_string(&mut data)?;
 
     let mut parser = toml::Parser::new(&data);
     let config_value = match parser.parse() {
@@ -172,7 +173,7 @@ pub fn load(path: &Path) -> Result<ValidatedConfig, ConfigError> {
 
     let config_value = toml::Value::Table(config_value);
 
-    Config::decode(&mut toml::Decoder::new(config_value))
+    Config::deserialize(&mut toml::Decoder::new(config_value))
         .map_err(From::from)
         .and_then(validate)
 }
@@ -208,31 +209,31 @@ fn validate(config: Config) -> Result<ValidatedConfig, ConfigError> {
     let defaults = defaults.as_ref();
 
     if let Some(cmd) = defaults.and_then(|d| d.command.as_ref()) {
-        try!(check_command(cmd, None));
+        check_command(cmd, None)?;
     }
 
     let mut validated_playlists = HashMap::new();
     for (name, playlist) in playlists {
         let files = playlist.files.iter()
-            .map(util::str_to_path_0)
+            .map(util::string_to_path)
             .map(|p| p.into_owned())
             .collect();
 
         let directories = playlist.directories.iter()
-            .map(util::str_to_path_0)
+            .map(util::string_to_path)
             .map(|p| p.into_owned())
             .collect();
 
         let (command, command_args) = match playlist.command.or_else(|| defaults.and_then(|d| d.command.clone())) {
             Some(mut full_command) => {
-                try!(check_command(&full_command, Some(&name)));
+                check_command(&full_command, Some(&name))?;
                 let command = full_command.remove(0);  // full_command is checked to be non-empty
                 (command, full_command)  // full_command now only contains args
             }
             None => return Err(format!("playlist {} has no command configured and no default is set", name).into())
         };
 
-        let mode = match playlist.mode.or(defaults.and_then(|d| d.mode)) {
+        let mode = match playlist.mode.or_else(|| defaults.and_then(|d| d.mode)) {
             Some(mode) => mode,
             None => return Err(format!("playlist {} has no change mode configured and no default is set", name).into())
         };
@@ -243,11 +244,11 @@ fn validate(config: Config) -> Result<ValidatedConfig, ConfigError> {
         };
 
         let trigger_on_select = playlist.trigger_on_select
-            .or(defaults.and_then(|d| d.trigger_on_select))
+            .or_else(|| defaults.and_then(|d| d.trigger_on_select))
             .unwrap_or(true);
 
         let use_last_on_select = playlist.use_last_on_select
-            .or(defaults.and_then(|d| d.use_last_on_select))
+            .or_else(|| defaults.and_then(|d| d.use_last_on_select))
             .unwrap_or(true);
 
         validated_playlists.insert(name, ValidatedPlaylist {
@@ -266,7 +267,7 @@ fn validate(config: Config) -> Result<ValidatedConfig, ConfigError> {
         common: common,
         server: ValidatedServerConfig {
             default_playlist: default_playlist,
-            watch: watch.unwrap_or(WatchMode::Poll(Duration::seconds(10))),
+            watch: watch.unwrap_or_else(|| WatchMode::Poll(Duration::seconds(30))),
             playlists: validated_playlists
         }
     })

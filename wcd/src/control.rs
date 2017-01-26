@@ -4,9 +4,8 @@ use std::io;
 
 use chan::{self, Receiver, Sender};
 use nanomsg::{Socket, Protocol};
-use bincode::rustc_serialize::DecodingError;
 
-use wcd_common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope};
+use wcd_common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope, ProtoError};
 
 pub fn start(endpoint: String) -> (Receiver<ControlRequest>, Sender<ControlResponse>, JoinHandle<()>) {
     let (control_req_send, control_req_recv) = chan::sync(0);
@@ -76,7 +75,7 @@ pub fn start(endpoint: String) -> (Receiver<ControlRequest>, Sender<ControlRespo
                         warn!("Received control request with invalid version {}, expected {}", version, proto::VERSION);
                     }
                 }
-                Err(DecodingError::IoError(ref e)) if e.kind() == io::ErrorKind::TimedOut => {
+                Err(ProtoError::Io(ref e)) if e.kind() == io::ErrorKind::TimedOut => {
                     chan_select! {
                         default => {},  // okay, do nothing
                         control_resp_recv.recv() => {  

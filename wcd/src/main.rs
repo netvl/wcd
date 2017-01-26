@@ -1,12 +1,11 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate chan;
 extern crate env_logger;
-extern crate rustc_serialize;
-extern crate docopt;
+#[macro_use(crate_version)]
+extern crate clap;
 extern crate chrono;
 extern crate rand;
 extern crate nanomsg;
-extern crate bincode;
 extern crate wcd_common;
 
 use std::borrow::Cow;
@@ -14,7 +13,7 @@ use std::path::Path;
 use std::io::{self, Write};
 use std::process;
 
-use docopt::Docopt;
+use clap::{App, AppSettings, Arg};
 
 use wcd_common::config;
 use wcd_common::util;
@@ -22,28 +21,22 @@ use wcd_common::util;
 mod server;
 mod control;
 
-const USAGE: &'static str = r"
-Usage: wcd [options]
-
-Options:
-    -c FILE, --config FILE  path to configuration file [default: ~/.config/wcd/config.toml]
-    -h, --help              show this message
-    -v, --version           show version information
-";
-
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-
 fn main() {
     env_logger::init().unwrap();
 
-    let args = Docopt::new(USAGE)
-        .unwrap_or_else(|e| e.exit())
-        .help(true)
-        .version(Some(VERSION.into()))
-        .parse()
-        .unwrap_or_else(|e| e.exit());
+    let matches = App::new("wallpaper change daemon")
+        .version(crate_version!())
+        .author("Vladimir Matveev <vladimir.matweev@gmail.com>")
+        .about("Changes the wallpaper in a timely manner using playlists.")
+        .setting(AppSettings::ArgRequiredElseHelp)
+        .setting(AppSettings::ColoredHelp)
+        .arg(
+            Arg::from_usage("-c, --config=[FILE] 'Path to the configuration file'")
+                .default_value("~/.config/wcd/config.toml")
+        )
+        .get_matches();
 
-    let config_path = args.get_str("--config");
+    let config_path = matches.value_of("config").unwrap();
     let config_path: Cow<Path> = util::str_to_path(config_path);
 
     let config = config::load(&config_path).unwrap_or_else(|e| {

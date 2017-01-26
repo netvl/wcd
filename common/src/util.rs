@@ -1,22 +1,21 @@
 use std::borrow::Cow;
-use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use chrono::Duration;
+use shellexpand;
 
 #[inline]
 pub fn str_to_path(s: &str) -> Cow<Path> {
-    if s.starts_with("~/") {
-        if let Some(mut home_dir) = env::home_dir() {
-            home_dir.push(&s[2..]);
-            return home_dir.into();
-        } 
+    match shellexpand::tilde(s) {
+        Cow::Borrowed(s) => Path::new(s).into(),
+        Cow::Owned(s) => PathBuf::from(s).into(),
     }
-    Path::new(s).into()
 }
 
 #[inline]
-pub fn str_to_path_0(s: &String) -> Cow<Path> { str_to_path(s) }
+pub fn string_to_path(s: &String) -> Cow<Path> { str_to_path(s) }
+
+const BASE_TEN: u32 = 10;
 
 pub fn parse_duration(s: &str) -> Option<Duration> {
     let mut digits = String::new();
@@ -24,7 +23,7 @@ pub fn parse_duration(s: &str) -> Option<Duration> {
     let mut reading_digits = true;
     for c in s.chars().filter(|c| !c.is_whitespace()) {
         if reading_digits {
-            if c.is_digit(10) {
+            if c.is_digit(BASE_TEN) {
                 digits.push(c);
             } else {
                 reading_digits = false;

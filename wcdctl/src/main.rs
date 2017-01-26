@@ -1,63 +1,19 @@
-extern crate docopt;
+#[macro_use(crate_version)]
+extern crate clap;
 extern crate nanomsg;
 extern crate bincode;
-extern crate rustc_serialize;
-extern crate wcd_common;
 extern crate chrono;
+extern crate wcd_common;
 
 use std::io::Write;
 use std::fmt;
 
-use docopt::Docopt;
+use clap::{App, AppSettings, SubCommand, Arg};
 use nanomsg::{Socket, Protocol};
 
 use wcd_common::{util, config};
 use wcd_common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope, PlaylistInfo, ChangeMode};
 use chrono::{Local, TimeZone};
-
-const USAGE: &'static str = r"
-Usage: wcdctl [options] trigger
-       wcdctl [options] refresh
-       wcdctl [options] terminate
-       wcdctl [options] status
-       wcdctl [options] set-playlist [--or-trigger] <name>
-       wcdctl (--help | --version)
-
-Options:
-    -c FILE, --config FILE  path to configuration file [default: ~/.config/wcd/config.toml]
-    --or-trigger            if the given playlist is already current, trigger the wallpaper
-                            change
-    -h, --help              show this message
-    -v, --version           show version information
-
-Commands:
-    trigger               triggers the wallpaper change in the current playlist
-    refresh               makes wcd rescan all directories in all playlist, potentially 
-                          loading new files
-    terminate             shuts wcd down
-    status                displays current status information (available playlists, 
-                          current items in them, timestamps, etc.)
-    set-playlist <name>   sets the provided playlist as the current one (may cause immediate
-                          wallpaper switch, depending on the selected playlist configuration)
-";
-
-#[derive(RustcDecodable, Debug)]
-struct Args {
-    flag_help: bool,
-    flag_version: bool,
-    flag_config: String,
-    flag_or_trigger: bool,
-
-    arg_name: String,
-
-    cmd_trigger: bool,
-    cmd_refresh: bool,
-    cmd_terminate: bool,
-    cmd_status: bool,
-    cmd_set_playlist: bool,
-}
-
-const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
 macro_rules! abort {
     ($code:expr) => {::std::process::exit($code)};
@@ -68,15 +24,49 @@ macro_rules! abort {
 }
 
 fn main() {
-    let args: Args = Docopt::new(USAGE)
-        .unwrap_or_else(|e| e.exit())
-        .help(true)
-        .version(Some(VERSION.into()))
-        .decode()
-        .unwrap_or_else(|e| e.exit());
+    let matches = App::new("wcd control utility")
+        .version(crate_version!())
+        .author("Vladimir Matveev <vladimir.matweev@gmail.com>")
+        .about("Provides a command line interface for controlling the wallpaper change daemon.")
+        .setting(AppSettings::ArgRequiredElseHelp)
+        .setting(AppSettings::ColoredHelp)
+        .setting(AppSettings::VersionlessSubcommands)
+        .arg(
+            Arg::from_usage("-c, --config=[FILE] 'Path to the configuration file'")
+                .default_value("~/.config/wcd/config.toml")
+        )
+        .subcommand(
+            SubCommand::with_name("trigger")
+                .setting(AppSettings::ColoredHelp)
+                .about("Triggers the wallpaper change in the current playlist.")
+        )
+        .subcommand(
+            SubCommand::with_name("refresh")
+                .setting(AppSettings::ColoredHelp)
+                .about("Makes wcd rescan all directories in all playlist, potentially loading new files.")
+        )
+        .subcommand(
+            SubCommand::with_name("terminate")
+                .setting(AppSettings::ColoredHelp)
+                .about("Shuts wcd down.")
+        )
+        .subcommand(
+            SubCommand::with_name("status")
+                .setting(AppSettings::ColoredHelp)
+                .about("Displays the current status information (available playlists, current items in them, timestamps, etc.).")
+        )
+        .subcommand(
+            SubCommand::with_name("set-playlist")
+                .setting(AppSettings::ColoredHelp)
+                .about("Sets the given playlist as the current one (may cause immediate wallpaper switch, depending on the selected playlist configuration).")
+                .args_from_usage(
+                    "<NAME> 'Name of the playlist'
+                     --or-trigger 'If the given playlist is already current, trigger the wallpaper change'"
+                )
+        )
+        .get_matches();
 
-    let config_path = util::str_to_path(&args.flag_config);
-    
+    let config_path = util::str_to_path(matches.value_of("config").unwrap());
     let config = config::load(&config_path)
         .unwrap_or_else(|e| abort!(1, "Cannot load configuration file {}: {}", config_path.display(), e));
 
@@ -90,40 +80,38 @@ fn main() {
     let mut ep = socket.connect(&endpoint)
         .unwrap_or_else(|e| abort!(1, "Error connecting socket to {}: {}", endpoint, e));
 
-    if !args.flag_or_trigger {
-        let req = if args.cmd_trigger {
-            ControlRequest::TriggerChange
-        } else if args.cmd_refresh {
-            ControlRequest::RefreshPlaylists
-        } else if args.cmd_terminate {
-            ControlRequest::Terminate
-        } else if args.cmd_status {
-            ControlRequest::GetStatus
-        } else if args.cmd_set_playlist {
-            ControlRequest::ChangePlaylist(args.arg_name)
-        } else {
-            abort!(1, "Unknown command");
-        };
+    let req = if matches.subcommand_matches("trigger").is_some() {
+        ControlRequest::TriggerChange
+    } else if matches.subcommand_matches("refresh").is_some() {
+        ControlRequest::RefreshPlaylists
+    } else if matches.subcommand_matches("terminate").is_some() {
+        ControlRequest::Terminate
+    } else if matches.subcommand_matches("status").is_some() {
+        ControlRequest::GetStatus
+    } else if let Some(set_playlist_matches) = matches.subcommand_matches("set-playlist") {
+        let playlist_name = set_playlist_matches.value_of("NAME").unwrap();
 
-        display_response(make_request(&mut socket, req));
-
-    } else {  // change playlist or trigger change, if needed
-        match make_request(&mut socket, ControlRequest::GetStatus) {
-            ControlResponse::StatusInfo { current_playlist, .. } => {
-                let req = if args.arg_name == current_playlist {
-                    ControlRequest::TriggerChange
-                } else {
-                    ControlRequest::ChangePlaylist(args.arg_name)
-                };
-
-                display_response(make_request(&mut socket, req))
+        if set_playlist_matches.is_present("or-trigger") {
+            match make_request(&mut socket, ControlRequest::GetStatus) {
+                ControlResponse::StatusInfo { current_playlist, .. } => {
+                    if playlist_name == current_playlist {
+                        ControlRequest::TriggerChange
+                    } else {
+                        ControlRequest::ChangePlaylist(playlist_name.into())
+                    }
+                }
+                _ => abort!(1, "Unexpected server response when getting current playlist")
             }
-            _ => abort!(1, "Unexpected server response")
+        } else {
+            ControlRequest::ChangePlaylist(playlist_name.into())
         }
-    }
+    } else {
+        unreachable!()
+    };
 
-    ep.shutdown()
-        .unwrap_or_else(|e| abort!(1, "Error closing socket endpoint: {}", e));
+    display_response(make_request(&mut socket, req));
+
+    ep.shutdown().unwrap_or_else(|e| abort!(1, "Error closing socket endpoint: {}", e));
 }
 
 fn make_request(socket: &mut Socket, req: ControlRequest) -> ControlResponse {
@@ -146,10 +134,8 @@ fn make_request(socket: &mut Socket, req: ControlRequest) -> ControlResponse {
 
 fn display_response(resp: ControlResponse) {
     match resp {
-        ControlResponse::TriggerChangeOk => {}
-        ControlResponse::RefreshPlaylistsOk => {}
-        ControlResponse::TerminateOk => {}
-        ControlResponse::ChangePlaylistOk => {}
+        ControlResponse::TriggerChangeOk | ControlResponse::RefreshPlaylistsOk |
+        ControlResponse::TerminateOk | ControlResponse::ChangePlaylistOk => {}
         ControlResponse::ChangePlaylistFailed => abort!(1, "Failed to change playlist"),
         ControlResponse::StatusInfo { playlists, current_playlist, last_update } => {
             println!("Last change time: {}", TimestampDisplay(last_update));
@@ -164,15 +150,6 @@ fn display_response(resp: ControlResponse) {
                 println!("No playlists available");
             }
         }
-    }
-}
-
-struct TimestampDisplay(i64);
-
-impl fmt::Display for TimestampDisplay {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let dt = Local.timestamp(self.0, 0);
-        dt.format("%F %T").fmt(f)
     }
 }
 
@@ -201,6 +178,15 @@ fn print_playlist(name: String, playlist: PlaylistInfo) {
         println!("    Use last used wallpaper on select: {}", BoolDisplay(playlist.use_last_on_select));
     }
     println!("    Next change time: {}", TimestampDisplay(playlist.next_update));
+}
+
+struct TimestampDisplay(i64);
+
+impl fmt::Display for TimestampDisplay {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let dt = Local.timestamp(self.0, 0);
+        dt.format("%F %T").fmt(f)
+    }
 }
 
 struct OptionDisplay<T>(Option<T>);

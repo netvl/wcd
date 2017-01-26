@@ -1,5 +1,5 @@
 use std::path::{PathBuf, Path};
-use std::io::{self, Write};
+use std::io;
 use std::process::Command;
 use std::fs;
 use std::fmt::Write as FmtWrite;
@@ -8,7 +8,7 @@ use std::time::Duration as StdDuration;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 
-use chan::{Receiver, Sender};
+use chan::{self, Receiver, Sender};
 use rand::{self, Rng};
 use chrono::{DateTime, UTC};
 
@@ -123,11 +123,10 @@ impl State {
             self.playlists, self.playlist_indices,
             self.current_playlist
         );
+        let tick = chan::tick(StdDuration::from_secs(1));
         loop {
             chan_select! {
-                default => {
-                    thread::sleep(StdDuration::from_secs(1));  // sleep 1 second
-                },
+                tick.recv() => {},
                 // handle control signals
                 control_req_recv.recv() -> value => {
                     if let Some(value) = value {
@@ -153,7 +152,7 @@ impl State {
                                 for (name, playlist) in playlist_indices.iter()
                                     .map(|(name, idx)| (name, &playlists[*idx])) {
                                     let files = playlist.images.len();
-                                    let mode = proto::ChangeMode::from_config(playlist.config.mode);
+                                    let mode = playlist.config.mode.into();
                                     let current_image = playlist.current
                                         .map(|idx| playlist.images[idx].path.display().to_string());
                                     let change_every = playlist.config.change_every;
@@ -267,7 +266,7 @@ pub fn start(config: ValidatedServerConfig,
 
         // set the default playlist
         // always unwraps
-        let current_playlist = *playlist_indices.get(&config.default_playlist).unwrap();
+        let current_playlist = playlist_indices[&config.default_playlist];
         info!("Current playlist is {}", config.default_playlist);
 
         let state = State {
@@ -297,7 +296,7 @@ fn build_images_list(config: &ValidatedPlaylist) -> Vec<Image> {
     let mut files: Vec<_> = Vec::new();
 
     for file in &config.files {
-        if check_file(&file) {
+        if check_file(file) {
             files.push(Image {
                 path: file.clone(),
                 usable: true
@@ -306,7 +305,7 @@ fn build_images_list(config: &ValidatedPlaylist) -> Vec<Image> {
     }
     
     for dir in &config.directories {
-        if let Err(e) = scan_directory(&dir, &mut files) {
+        if let Err(e) = scan_directory(dir, &mut files) {
             warn!("Error reading directory {}: {}", dir.display(), e);
         }
     }
@@ -317,7 +316,7 @@ fn build_images_list(config: &ValidatedPlaylist) -> Vec<Image> {
 fn update_images_list(config: &ValidatedPlaylist, existing_images: &[Image]) -> Vec<Image> {
     let mut result = Vec::new();
     for dir in &config.directories {
-        match rescan_directory(&dir, existing_images, &mut result) {
+        match rescan_directory(dir, existing_images, &mut result) {
             Ok(n) if n > 0 => info!("Discovered {} more files in directory {}", n, dir.display()),
             Ok(_) => {}
             Err(e) => warn!("Error reading directory {}: {}", dir.display(), e)
@@ -331,7 +330,7 @@ fn rescan_directory(dir: &Path, existing_images: &[Image],
 {
     let mut n = 0;
 
-    for entry in try!(fs::read_dir(dir)) {
+    for entry in fs::read_dir(dir)? {
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => {
@@ -354,7 +353,7 @@ fn rescan_directory(dir: &Path, existing_images: &[Image],
 }
 
 fn scan_directory(dir: &Path, images: &mut Vec<Image>) -> io::Result<()> {
-    for entry in try!(fs::read_dir(dir)) {
+    for entry in fs::read_dir(dir)? {
         let entry = match entry {
             Ok(entry) => entry,
             Err(e) => {
@@ -434,7 +433,7 @@ impl<'a> ChangeCommand<'a> {
             Ok(ref status) if status.success() => {},
             status => {
                 let mut args_str = String::new();
-                for a in args.iter() {
+                for a in &args {
                     let _ = write!(&mut args_str, " \"{}\"", a.to_string_lossy());
                 }
                 let command_str = format!("\"{}\"{}", self.name, args_str);
@@ -444,9 +443,9 @@ impl<'a> ChangeCommand<'a> {
                         Some(code) =>
                             warn!("command {} has exited with code {}", command_str, code),
                         None =>
-                            warn!("command {} has exited without status code", command_str)
+                            warn!("command {} has exited without status code", command_str),
                     },
-                    Err(e) => warn!("failed to start command {}: {}", command_str, e)
+                    Err(e) => warn!("failed to start command {}: {}", command_str, e),
                 }
             }
         }

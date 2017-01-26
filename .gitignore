@@ -1,3 +1,6 @@
 target
-*.sw[po]
+*.sw?
 common/Cargo.lock
+Cargo.lock
+*.iml
+.idea
