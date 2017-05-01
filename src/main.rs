@@ -19,6 +19,8 @@ use std::path::Path;
 
 use clap::{App, SubCommand, AppSettings, Arg};
 
+use common::log::LogLevel;
+
 mod common;
 mod cli;
 mod daemon;
@@ -35,9 +37,19 @@ fn main() {
             Arg::from_usage("-c, --config=[FILE] 'Path to the configuration file'")
                 .default_value("~/.config/wcd/config.toml")
         )
+        .args_from_usage(
+            "-v... 'Enable verbose output (up to two times)'"
+        )
         .subcommand(daemon::subcommand())
         .subcommands(cli::subcommands())
         .get_matches();
+
+    let log_level = match matches.occurrences_of("v") {
+        0 => LogLevel::Normal,
+        1 => LogLevel::Debug,
+        _ => LogLevel::Trace,
+    };
+    common::log::configure_or_panic(log_level);
 
     let config_path = matches.value_of("config").unwrap();
     let config_path: Cow<Path> = common::util::str_to_path(config_path);
