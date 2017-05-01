@@ -170,7 +170,6 @@ You can set it to `info` level to get less detailed logs, or you can set the glo
 
 In no particular order:
 
-* Merge `wcd` and `wcdctl` into a single binary.
 * Add support for persisting the state of the daemon between reloads.
 * Add support for printing out wallpapers playlists and selecting a particular wallpaper.
 * Create a web UI for controlling the daemon.

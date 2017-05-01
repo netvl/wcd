@@ -5,7 +5,7 @@ use std::io;
 use chan::{self, Receiver, Sender};
 use nanomsg::{Socket, Protocol};
 
-use wcd_common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope, ProtoError};
+use common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope, ProtoError};
 
 pub fn start(endpoint: String) -> (Receiver<ControlRequest>, Sender<ControlResponse>, JoinHandle<()>) {
     let (control_req_send, control_req_recv) = chan::sync(0);

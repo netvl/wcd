@@ -12,8 +12,8 @@ use chan::{self, Receiver, Sender};
 use rand::{self, Rng};
 use chrono::{DateTime, UTC};
 
-use wcd_common::proto::{self, ControlRequest, ControlResponse};
-use wcd_common::config::{ValidatedServerConfig, ValidatedPlaylist, ChangeMode, WatchMode};
+use common::proto::{self, ControlRequest, ControlResponse};
+use common::config::{ValidatedServerConfig, ValidatedPlaylist, ChangeMode, WatchMode};
 
 struct Image {
     // path to the image file

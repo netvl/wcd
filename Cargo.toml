@@ -1,2 +1,36 @@
-[workspace]
-members = ["common", "wcd", "wcdctl"]
+[package]
+name = "wcd"
+version = "0.3.0"
+authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
+
+[dependencies]
+# command-line parsing
+clap = "2.23"
+
+# logging
+log = "0.3"
+
+# serialization
+serde = "1.0"
+serde_derive = "1.0"
+
+# data formats
+toml = "0.4"
+bincode = { git = "https://github.com/TyOverby/bincode" }
+
+# networking
+nanomsg = "0.6"
+
+# various utilities
+quick-error = "1.1"
+rand = "0.3"
+chan = "0.1"
+chrono = "0.3"
+shellexpand = "1.0"
+lazy_static = "0.2"
+appdirs = "0.2"
+
+[dependencies.log4rs]
+version = "0.7"
+default-features = false
+features = ["console_appender", "pattern_encoder"]

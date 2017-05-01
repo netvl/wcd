@@ -9,7 +9,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use chrono::Duration;
 
-use util;
+use common::util;
 
 quick_error! {
     #[derive(Debug)]
@@ -93,7 +93,9 @@ pub struct ServerConfig {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Playlist {
+    #[serde(default)]
     pub files: Vec<String>,
+    #[serde(default)]
     pub directories: Vec<String>,
     pub command: Option<Vec<String>>,
     pub mode: Option<ChangeMode>,

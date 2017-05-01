@@ -4,7 +4,7 @@ use std::io::{self, Read, Write};
 use bincode::{self, serialize, deserialize, Infinite};
 use serde::{Deserialize, Serialize};
 
-use config;
+use common::config;
 
 pub const VERSION: u32 = 1;
 
@@ -57,6 +57,15 @@ pub enum ControlResponse {
 pub struct ControlEnvelope<T> {
     pub version: u32,
     pub content: T,
+}
+
+impl<T> ControlEnvelope<T> {
+    pub fn wrap(value: T) -> ControlEnvelope<T> {
+        ControlEnvelope {
+            version: VERSION,
+            content: value,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
