@@ -5,10 +5,15 @@ authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 
 [dependencies]
 wcd-common = { path = "../common" }
-clap = "2.20"
+clap = "2.23"
 log = "0.3"
 env_logger = "0.3"
-chrono = "0.2"
+chrono = "0.3"
 rand = "0.3"
 chan = "0.1"
 nanomsg = "0.6"
+appdirs = "0.2"
+lazy_static = "0.2"
+serde = "1.0"
+bincode = { git = "https://github.com/TyOverby/bincode" }
+

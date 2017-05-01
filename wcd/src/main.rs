@@ -6,6 +6,10 @@ extern crate clap;
 extern crate chrono;
 extern crate rand;
 extern crate nanomsg;
+extern crate appdirs;
+#[macro_use] extern crate lazy_static;
+extern crate serde;
+extern crate bincode;
 extern crate wcd_common;
 
 use std::borrow::Cow;
@@ -20,6 +24,7 @@ use wcd_common::util;
 
 mod server;
 mod control;
+mod cache;
 
 fn main() {
     env_logger::init().unwrap();

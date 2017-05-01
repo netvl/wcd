@@ -166,6 +166,15 @@ environment variable:
 You can set it to `info` level to get less detailed logs, or you can set the global level
 (like in `RUST_LOG=debug`) to obtain lots of logs from `wcd` dependency libraries as well.
 
+## Future features
+
+In no particular order:
+
+* Merge `wcd` and `wcdctl` into a single binary.
+* Add support for persisting the state of the daemon between reloads.
+* Add support for printing out wallpapers playlists and selecting a particular wallpaper.
+* Create a web UI for controlling the daemon.
+
 ## License
 
 This program is licensed under either of

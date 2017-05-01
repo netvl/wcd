@@ -1,7 +1,6 @@
 #[macro_use(crate_version)]
 extern crate clap;
 extern crate nanomsg;
-extern crate bincode;
 extern crate chrono;
 extern crate wcd_common;
 

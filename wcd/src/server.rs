@@ -209,7 +209,7 @@ impl State {
             // refresh playlists if needed
             if let WatchMode::Poll(watch_interval) = self.watch {
                 let current_watch_timestamp = UTC::now();
-                let difference = current_watch_timestamp - self.last_watch_timestamp;
+                let difference = current_watch_timestamp.signed_duration_since(self.last_watch_timestamp);
 
                 if difference >= watch_interval {
                     info!("Refreshing playlists");
@@ -222,7 +222,7 @@ impl State {
 
             // change wallpaper if time has come
             let current_timestamp = UTC::now();
-            let difference = current_timestamp - self.last_timestamp;
+            let difference = current_timestamp.signed_duration_since(self.last_timestamp);
 
             if difference >= playlists[current_playlist].config.change_every {
                 while { 

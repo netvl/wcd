@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::io::{self, Read, Write};
 
-use bincode::SizeLimit;
-use bincode::serde::{serialize, deserialize, SerializeError, DeserializeError};
+use bincode::{self, serialize, deserialize, Infinite};
 use serde::{Deserialize, Serialize};
 
 use config;
@@ -18,16 +17,10 @@ quick_error! {
             display("I/O error: {}", err)
             cause(err)
         }
-        Serialization(err: SerializeError) {
+        Bincode(err: bincode::Error) {
             from()
-            description("serialization error")
-            display("serialization error: {}", err)
-            cause(err)
-        }
-        Deserialization(err: DeserializeError) {
-            from()
-            description("deserialization error")
-            display("deserialization error: {}", err)
+            description("bincode (de)serialization error")
+            display("bincode (de)serialization error: {}", err)
             cause(err)
         }
     }
@@ -93,36 +86,26 @@ impl From<config::ChangeMode> for ChangeMode {
     }
 }
 
-pub fn read_message<R: Read + ?Sized, T: Deserialize>(r: &mut R) -> Result<T, ProtoError> {
+pub fn read_message<R: Read + ?Sized, T: for<'a> Deserialize<'a>>(r: &mut R) -> Result<T, ProtoError> {
     // read the size and deserialize it into a big-endian u32
     let mut size_buf = [0u8; 4];
-    if r.read(&mut size_buf)? < 4 {
-        return Err(
-            io::Error::new(io::ErrorKind::UnexpectedEof, "size message is too small").into()
-        );
-    }
-    let size: u32 = ((size_buf[0] as u32) << 24) | 
+    r.read_exact(&mut size_buf)?;
+    let size: u32 = ((size_buf[0] as u32) << 24) |
                     ((size_buf[1] as u32) << 16) | 
                     ((size_buf[2] as u32) << 8) | 
                     size_buf[3] as u32;
 
     // read the data message
     let mut data_buf = vec![0u8; size as usize];
-    let bytes_read = r.read(&mut data_buf)?;
-    if bytes_read < size as usize {
-        Err(io::Error::new(
-            io::ErrorKind::UnexpectedEof,
-            format!("data message is too small, read {} bytes, expected {} bytes", bytes_read, size)
-        ).into())
-    } else {
-        // and decode it
-        deserialize(&data_buf).map_err(From::from)
-    }
+    r.read_exact(&mut data_buf)?;
+
+    // and decode it
+    Ok(deserialize(&data_buf)?)
 }
 
 pub fn write_message<W: Write + ?Sized, T: Serialize>(w: &mut W, value: &T) -> Result<(), ProtoError> {
     // first encode the data message
-    let data = serialize(value, SizeLimit::Infinite)?;
+    let data = serialize(value, Infinite)?;
 
     // then compute a big-endian size representation and write it
     let size = data.len() as u32;
@@ -132,8 +115,8 @@ pub fn write_message<W: Write + ?Sized, T: Serialize>(w: &mut W, value: &T) -> R
         ((size >> 8) & 0xFF) as u8,
         (size & 0xFF) as u8
     ];
-    w.write_all(&size_buf).map_err(ProtoError::from)?;
+    w.write_all(&size_buf)?;
 
     // write the data message
-    w.write_all(&data).map_err(From::from)
+    Ok(w.write_all(&data)?)
 }

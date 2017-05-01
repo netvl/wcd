@@ -1,12 +1,12 @@
 use std::io::{self, Read};
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::fmt::Write;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
 use toml;
-use serde::{Deserialize, Deserializer, Error};
+use serde::de::Error;
+use serde::{Deserialize, Deserializer};
 use chrono::Duration;
 
 use util;
@@ -20,20 +20,11 @@ quick_error! {
             display("I/O error: {}", err)
             cause(err)
         }
-        Decode(err: toml::DecodeError) {
+        Deserialize(err: toml::de::Error) {
             from()
-            description("TOML decoding error")
-            display("TOML decoding error: {}", err)
+            description("TOML deserialization error")
+            display("TOML deserialization error: {}", err)
             cause(err)
-        }
-        Parse(errs: Vec<toml::ParserError>) {
-            from()
-            description("TOML parse error")
-            display("TOML parse error:\n{}", errs.iter().fold(String::new(), |mut s, e| {
-                let _ = write!(&mut s, "* {}\n", e);
-                s
-            }))
-            cause(&errs[0])
         }
         Validation(msg: Cow<'static, str>) {
             from()
@@ -51,8 +42,8 @@ pub enum WatchMode {
     Poll(Duration),
 }
 
-impl Deserialize for WatchMode {
-    fn deserialize<D>(deserializer: &mut D) -> Result<WatchMode, D::Error> where D: Deserializer {
+impl<'a> Deserialize<'a> for WatchMode {
+    fn deserialize<D>(deserializer: D) -> Result<WatchMode, D::Error> where D: Deserializer<'a> {
         match String::deserialize(deserializer)?.as_str() {
             "disabled" => Ok(WatchMode::Disabled),
             other => match util::parse_duration(other) {
@@ -69,8 +60,8 @@ pub enum ChangeMode {
     Random,
 }
 
-impl Deserialize for ChangeMode {
-    fn deserialize<D>(deserializer: &mut D) -> Result<ChangeMode, D::Error> where D: Deserializer {
+impl<'a> Deserialize<'a> for ChangeMode {
+    fn deserialize<D>(deserializer: D) -> Result<ChangeMode, D::Error> where D: Deserializer<'a> {
         match String::deserialize(deserializer)?.as_str() {
             "sequential" => Ok(ChangeMode::Sequential),
             "random" => Ok(ChangeMode::Random),
@@ -123,8 +114,8 @@ pub struct Defaults {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ParsedDuration(Duration);
 
-impl Deserialize for ParsedDuration {
-    fn deserialize<D>(deserializer: &mut D) -> Result<ParsedDuration, D::Error> where D: Deserializer {
+impl<'a> Deserialize<'a> for ParsedDuration {
+    fn deserialize<D>(deserializer: D) -> Result<ParsedDuration, D::Error> where D: Deserializer<'a> {
         let s = String::deserialize(deserializer)?;
         match util::parse_duration(&s) {
             Some(d) => Ok(ParsedDuration(d)),
@@ -165,17 +156,7 @@ pub fn load(path: &Path) -> Result<ValidatedConfig, ConfigError> {
     let mut data = String::new();
     file.read_to_string(&mut data)?;
 
-    let mut parser = toml::Parser::new(&data);
-    let config_value = match parser.parse() {
-        Some(config) => config,
-        None => return Err(parser.errors.into())
-    };
-
-    let config_value = toml::Value::Table(config_value);
-
-    Config::deserialize(&mut toml::Decoder::new(config_value))
-        .map_err(From::from)
-        .and_then(validate)
+    validate(toml::from_str::<Config>(&data)?)
 }
 
 fn validate(config: Config) -> Result<ValidatedConfig, ConfigError> {

@@ -5,7 +5,6 @@ authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 
 [dependencies]
 wcd-common = { path = "../common" }
-clap = "2.20"
+clap = "2.23"
 nanomsg = "0.6"
-bincode = "0.6"
-chrono = "0.2"
+chrono = "0.3"
