@@ -55,7 +55,7 @@ fn main() {
     let config_path: Cow<Path> = common::util::str_to_path(config_path);
 
     match matches.subcommand() {
-        ("daemon", Some(matches)) => daemon::main(config_path, matches),
+        (daemon::SUBCOMMAND_NAME, Some(_)) => daemon::main(config_path),
         (subcommand, Some(matches)) => cli::main(config_path, subcommand, matches),
         _ => unreachable!()
     }

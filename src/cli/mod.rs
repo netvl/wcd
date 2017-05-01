@@ -3,7 +3,7 @@ use std::fmt;
 use std::borrow::Cow;
 use std::path::Path;
 
-use clap::{App, AppSettings, SubCommand, Arg, ArgMatches};
+use clap::{App, AppSettings, Arg, ArgMatches};
 use nanomsg::{Socket, Protocol};
 
 use common::{util, config};
@@ -20,19 +20,19 @@ macro_rules! abort {
 
 pub fn subcommands() -> Vec<App<'static, 'static>> {
     vec![
-        SubCommand::with_name("trigger")
+        App::new("trigger")
             .setting(AppSettings::ColoredHelp)
             .about("Triggers the wallpaper change in the current playlist"),
-        SubCommand::with_name("refresh")
+        App::new("refresh")
             .setting(AppSettings::ColoredHelp)
             .about("Makes wcd rescan all directories in all playlist, potentially loading new files"),
-        SubCommand::with_name("terminate")
+        App::new("terminate")
             .setting(AppSettings::ColoredHelp)
             .about("Shuts wcd down"),
-        SubCommand::with_name("status")
+        App::new("status")
             .setting(AppSettings::ColoredHelp)
             .about("Displays the current status information (available playlists, current items in them, timestamps, etc)"),
-        SubCommand::with_name("set-playlist")
+        App::new("set-playlist")
             .setting(AppSettings::ColoredHelp)
             .about("Sets the given playlist as the current one (may cause immediate wallpaper switch, depending on the selected playlist configuration)")
             .args_from_usage(
@@ -43,6 +43,7 @@ pub fn subcommands() -> Vec<App<'static, 'static>> {
 }
 
 pub fn main(config_path: Cow<Path>, subcommand: &str, matches: &ArgMatches) {
+
     let config = config::load(&config_path)
         .unwrap_or_else(|e| abort!(1, "Cannot load configuration file {}: {}", config_path.display(), e));
 
