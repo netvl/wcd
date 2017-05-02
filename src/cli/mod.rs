@@ -3,11 +3,11 @@ use std::fmt;
 use std::borrow::Cow;
 use std::path::Path;
 
-use clap::{App, AppSettings, Arg, ArgMatches};
+use clap::{App, AppSettings, ArgMatches};
 use nanomsg::{Socket, Protocol};
 
-use common::{util, config};
-use common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope, PlaylistInfo, ChangeMode};
+use common::config;
+use common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope, StatusInfo, PlaylistInfo, ChangeMode};
 use chrono::{Local, TimeZone};
 
 macro_rules! abort {
@@ -67,7 +67,7 @@ pub fn main(config_path: Cow<Path>, subcommand: &str, matches: &ArgMatches) {
 
             if matches.is_present("or-trigger") {
                 match make_request(&mut socket, ControlRequest::GetStatus) {
-                    ControlResponse::StatusInfo { current_playlist, .. } => {
+                    ControlResponse::StatusInfoOk(StatusInfo { current_playlist, .. }) => {
                         if playlist_name == current_playlist {
                             ControlRequest::TriggerChange
                         } else {
@@ -109,7 +109,7 @@ fn display_response(resp: ControlResponse) {
         ControlResponse::TriggerChangeOk | ControlResponse::RefreshPlaylistsOk |
         ControlResponse::TerminateOk | ControlResponse::ChangePlaylistOk => {}
         ControlResponse::ChangePlaylistFailed => abort!(1, "Failed to change playlist"),
-        ControlResponse::StatusInfo { playlists, current_playlist, last_update } => {
+        ControlResponse::StatusInfoOk(StatusInfo { playlists, current_playlist, last_update }) => {
             println!("Last change time: {}", TimestampDisplay(last_update));
             println!("Current playlist: {}", current_playlist);
 
@@ -122,6 +122,7 @@ fn display_response(resp: ControlResponse) {
                 println!("No playlists available");
             }
         }
+        ControlResponse::StatusInfoFailed => abort!(1, "Failed to retrieve status info")
     }
 }
 

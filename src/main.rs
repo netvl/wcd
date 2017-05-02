@@ -2,7 +2,6 @@
 #[macro_use] extern crate quick_error;
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate lazy_static;
-#[macro_use] extern crate chan;
 #[macro_use(crate_version)] extern crate clap;
 extern crate chrono;
 extern crate toml;
@@ -13,11 +12,12 @@ extern crate log4rs;
 extern crate appdirs;
 extern crate nanomsg;
 extern crate rand;
+extern crate lazy_scoped;
 
 use std::borrow::Cow;
 use std::path::Path;
 
-use clap::{App, SubCommand, AppSettings, Arg};
+use clap::{App, AppSettings, Arg};
 
 use common::log::LogLevel;
 

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
-use chrono::Duration;
+use chrono::{Duration, DateTime, UTC};
 use shellexpand;
 
 #[inline]
@@ -51,3 +51,7 @@ pub fn parse_duration(s: &str) -> Option<Duration> {
     Some(mk_duration(n))
 }
 
+// returns an instant most likely located in the past
+pub fn past_timestamp() -> DateTime<UTC> {
+    DateTime::parse_from_str("0+0000", "%s%z").unwrap().with_timezone(&UTC)
+}

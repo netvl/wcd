@@ -24,11 +24,11 @@ nanomsg = "0.6"
 # various utilities
 quick-error = "1.1"
 rand = "0.3"
-chan = "0.1"
 chrono = "0.3"
 shellexpand = "1.0"
 lazy_static = "0.2"
 appdirs = "0.2"
+lazy-scoped = "0.1"
 
 [dependencies.log4rs]
 version = "0.7"

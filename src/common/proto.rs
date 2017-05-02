@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use common::config;
 
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 quick_error! {
     #[derive(Debug)]
@@ -43,11 +43,8 @@ pub enum ControlResponse {
     RefreshPlaylistsOk,
     TerminateOk,
 
-    StatusInfo {
-        playlists: HashMap<String, PlaylistInfo>,
-        current_playlist: String,
-        last_update: i64
-    },
+    StatusInfoOk(StatusInfo),
+    StatusInfoFailed,
 
     ChangePlaylistOk,
     ChangePlaylistFailed,
@@ -66,6 +63,13 @@ impl<T> ControlEnvelope<T> {
             content: value,
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct StatusInfo {
+    pub playlists: HashMap<String, PlaylistInfo>,
+    pub current_playlist: String,
+    pub last_update: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
