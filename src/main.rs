@@ -30,7 +30,7 @@ fn main() {
         .version(crate_version!())
         .author("Vladimir Matveev <vladimir.matweev@gmail.com>")
         .about("A wallpaper change daemon and its control utility.")
-        .setting(AppSettings::ColoredHelp)
+        .global_setting(AppSettings::ColoredHelp)
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .setting(AppSettings::VersionlessSubcommands)
         .arg(

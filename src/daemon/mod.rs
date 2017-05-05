@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::process;
 
-use clap::{App, AppSettings};
+use clap::App;
 
 use common::config;
 
@@ -16,7 +16,6 @@ pub const SUBCOMMAND_NAME: &'static str = "daemon";
 pub fn subcommand() -> App<'static, 'static> {
     App::new(SUBCOMMAND_NAME)
         .about("Starts the wallpaper change daemon")
-        .setting(AppSettings::ColoredHelp)
 }
 
 pub fn main(config_path: Cow<Path>) {

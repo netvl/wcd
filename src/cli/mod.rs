@@ -3,7 +3,7 @@ use std::fmt;
 use std::borrow::Cow;
 use std::path::Path;
 
-use clap::{App, AppSettings, ArgMatches};
+use clap::{App, ArgMatches};
 use nanomsg::{Socket, Protocol};
 
 use common::config;
@@ -21,19 +21,14 @@ macro_rules! abort {
 pub fn subcommands() -> Vec<App<'static, 'static>> {
     vec![
         App::new("trigger")
-            .setting(AppSettings::ColoredHelp)
             .about("Triggers the wallpaper change in the current playlist"),
         App::new("refresh")
-            .setting(AppSettings::ColoredHelp)
             .about("Makes wcd rescan all directories in all playlist, potentially loading new files"),
         App::new("terminate")
-            .setting(AppSettings::ColoredHelp)
             .about("Shuts wcd down"),
         App::new("status")
-            .setting(AppSettings::ColoredHelp)
             .about("Displays the current status information (available playlists, current items in them, timestamps, etc)"),
         App::new("set-playlist")
-            .setting(AppSettings::ColoredHelp)
             .about("Sets the given playlist as the current one (may cause immediate wallpaper switch, depending on the selected playlist configuration)")
             .args_from_usage(
                 "<NAME> 'Name of the playlist'
