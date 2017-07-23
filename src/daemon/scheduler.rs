@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::collections::HashMap;
 
-use chrono::{Duration, DateTime, UTC};
+use chrono::{Duration, DateTime, Utc};
 
 use common::util;
 
@@ -19,7 +19,7 @@ struct State {
 
 struct JobState {
     action: Box<FnMut() + Send + 'static>,
-    last_execution_timestamp: DateTime<UTC>,
+    last_execution_timestamp: DateTime<Utc>,
     trigger_duration: Option<Duration>,
 }
 
@@ -57,13 +57,13 @@ impl Scheduler {
         trace!("Resetting last execution time of scheduled job '{}' to now", job_name);
         let mut g = self.state.lock().unwrap();
         if let Some(ref mut js) = g.jobs.get_mut(job_name) {
-            js.last_execution_timestamp = UTC::now();
+            js.last_execution_timestamp = Utc::now();
         } else {
             warn!("Job '{}' does not exist, cannot simulate it", job_name);
         }
     }
 
-    pub fn get_last_execution_timestamp(&self, job_name: &str) -> Option<DateTime<UTC>> {
+    pub fn get_last_execution_timestamp(&self, job_name: &str) -> Option<DateTime<Utc>> {
         let g = self.state.lock().unwrap();
         if let Some(ref js) = g.jobs.get(job_name) {
             trace!("Retrieving the last execution time of job '{}'", job_name);
@@ -84,7 +84,7 @@ impl Scheduler {
 
                 if g.terminated { break; }
 
-                let current_timestamp = UTC::now();
+                let current_timestamp = Utc::now();
                 for (job_name, job_state) in &mut g.jobs {
                     if let Some(trigger_duration) = job_state.trigger_duration {
                         let diff = current_timestamp.signed_duration_since(job_state.last_execution_timestamp);

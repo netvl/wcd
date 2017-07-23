@@ -1,16 +1,24 @@
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
+use std::error::Error;
+
+use chrono::{DateTime, Utc};
 
 use common::proto;
 use common::config::ValidatedServerConfig;
 use daemon::scheduler::Scheduler;
 use daemon::processor::playlist::Playlist;
+use daemon::stats::Stats;
 
 mod playlist;
 mod command;
 
 pub const TRIGGER_JOB_NAME: &'static str = "trigger";
 pub const REFRESH_JOB_NAME: &'static str = "refresh";
+pub const UPDATE_STATS_JOB_NAME: &'static str = "update_stats";
+
+pub const UPDATE_STATS_INTERVAL_SECS: i64 = 5;
+pub const SKIP_INTERVAL_SECS: i64 = 10;
 
 pub type ProcessorResult<T> = Result<T, ()>;  // unit for now
 
@@ -19,15 +27,36 @@ struct State {
     playlist_indices: HashMap<String, usize>,
     current_playlist: usize,
     scheduler: Scheduler,
+    stats: Option<Stats>,
+    last_trigger_time: Option<DateTime<Utc>>,
 }
 
 impl State {
     fn trigger(&mut self, simulate: bool) -> ProcessorResult<()> {
-        let playlist = &mut self.playlists[self.current_playlist];
-        while {
-            playlist.move_to_next_image();
-            !playlist.apply_current_image()
-        } { }
+        {
+            let playlist = &mut self.playlists[self.current_playlist];
+            while {
+                playlist.move_to_next_image();
+                !playlist.apply_current_image()
+            } { }
+        }
+
+        let _ = self.with_stats_and_current_path::<_, Box<Error>>(|stats, current| {
+            stats.register_displays(current, 1)?;
+
+            if let Some(last_trigger_time) = self.last_trigger_time {
+                let now = Utc::now();
+
+                let diff = now.signed_duration_since(last_trigger_time);
+                if diff.num_seconds() <= SKIP_INTERVAL_SECS {
+                    stats.register_skips(current, 1)?;
+                }
+            }
+
+            Ok(())
+        });
+
+        self.last_trigger_time = Some(Utc::now());
 
         if simulate {
             self.scheduler.simulate(TRIGGER_JOB_NAME);
@@ -108,6 +137,10 @@ impl State {
                 if current_playlist!().config().use_last_on_select {
                     if current_playlist!().move_to_next_image_if_first_time() {
                         info!("Playlist wasn't used before, picking the first image");
+                        let _ = self.with_stats_and_current_path(|stats, current| {
+                            stats.register_displays(current, 1)
+                        });
+                        
                     } else {
                         info!("Restoring the last used wallpaper in the current playlist");
                     }
@@ -124,6 +157,25 @@ impl State {
             Err(())
         }
     }
+
+    fn update_stats(&self) -> ProcessorResult<()> {
+        self.with_stats_and_current_path(|stats, current| {
+            stats.register_display_time(current, UPDATE_STATS_INTERVAL_SECS)
+        })
+    }
+
+    fn with_stats_and_current_path<F, E>(&self, f: F) -> ProcessorResult<()>
+        where F: Fn(&Stats, &str) -> Result<(), E>,
+              E: ::std::fmt::Display,
+    {
+        if let Some(ref stats) = self.stats {
+            if let Some(current) = self.playlists[self.current_playlist].current() {
+                f(stats, &current.path.to_string_lossy())
+                    .map_err(|e| { warn!("Failed to update statistics: {}", e); })?;
+            }
+        }
+        Ok(())
+    }
 }
 
 #[derive(Clone)]
@@ -133,7 +185,8 @@ pub struct Processor {
 
 impl Processor {
     pub fn new(config: ValidatedServerConfig,
-               scheduler: Scheduler) -> Processor {
+               scheduler: Scheduler,
+               stats: Option<Stats>) -> Processor {
         // will contain runtime playlists
         let mut playlists = Vec::new();
         // playlist name -> playlist index in the above vector
@@ -165,14 +218,11 @@ impl Processor {
         info!("Current playlist is {}", config.default_playlist);
 
         let state = State {
-            playlists: playlists,
-            playlist_indices: playlist_indices,
-            current_playlist: current_playlist,
-            scheduler: scheduler,
+            playlists, playlist_indices, current_playlist, scheduler, stats,
+            last_trigger_time: None,
         };
-        Processor {
-            state: Arc::new(Mutex::new(state)),
-        }
+        let state = Arc::new(Mutex::new(state));
+        Processor { state, }
     }
 
     pub fn start(&self) {
@@ -198,6 +248,11 @@ impl Processor {
     pub fn change_playlist(&self, playlist_name: &str) -> ProcessorResult<()> {
         let mut g = self.state.lock().unwrap();
         g.change_playlist(playlist_name)
+    }
+
+    pub fn update_stats(&self) -> ProcessorResult<()> {
+        let g = self.state.lock().unwrap();
+        g.update_stats()
     }
 }
 

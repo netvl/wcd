@@ -2,6 +2,8 @@
 #[macro_use] extern crate quick_error;
 #[macro_use] extern crate serde_derive;
 #[macro_use] extern crate lazy_static;
+#[macro_use] extern crate diesel_codegen;
+#[macro_use] extern crate diesel;
 #[macro_use(crate_version)] extern crate clap;
 extern crate chrono;
 extern crate toml;

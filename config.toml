@@ -6,6 +6,7 @@ default_playlist = "default"
 watch = "1 minute"
 # watch = "disabled"
 # watch = "auto"  # inotify, in future versions
+stats_db = "~/.cache/wcd/stats.db"
 
 [server.defaults]
 # mode = "sequential"

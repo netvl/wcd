@@ -8,6 +8,7 @@ use toml;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer};
 use chrono::Duration;
+use shellexpand;
 
 use common::util;
 
@@ -89,6 +90,7 @@ pub struct ServerConfig {
     pub watch: Option<WatchMode>,
     pub defaults: Option<Defaults>,
     pub playlists: HashMap<String, Playlist>,
+    pub stats_db: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -139,6 +141,7 @@ pub struct ValidatedServerConfig {
     pub default_playlist: String,
     pub watch: WatchMode,
     pub playlists: HashMap<String, ValidatedPlaylist>,
+    pub stats_db: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -163,7 +166,7 @@ pub fn load(path: &Path) -> Result<ValidatedConfig, ConfigError> {
 
 fn validate(config: Config) -> Result<ValidatedConfig, ConfigError> {
     let Config { 
-        server: ServerConfig { default_playlist, watch, defaults, playlists }, 
+        server: ServerConfig { default_playlist, watch, defaults, playlists, stats_db },
         common
     } = config;
 
@@ -246,12 +249,15 @@ fn validate(config: Config) -> Result<ValidatedConfig, ConfigError> {
         });
     }
 
+    let stats_db = stats_db.map(|s| Path::new(&*shellexpand::tilde(&s)).to_owned());
+
     Ok(ValidatedConfig {
         common: common,
         server: ValidatedServerConfig {
             default_playlist: default_playlist,
             watch: watch.unwrap_or_else(|| WatchMode::Poll(Duration::seconds(30))),
-            playlists: validated_playlists
+            playlists: validated_playlists,
+            stats_db: stats_db,
         }
     })
 }

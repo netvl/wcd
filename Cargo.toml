@@ -1,11 +1,11 @@
 [package]
 name = "wcd"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
 
 [dependencies]
 # command-line parsing
-clap = "2.23"
+clap = "2.25"
 
 # logging
 log = "0.3"
@@ -21,10 +21,14 @@ bincode = { git = "https://github.com/TyOverby/bincode" }
 # networking
 nanomsg = "0.6"
 
+# database
+diesel = { version = "0.14", features = ["sqlite", "chrono"] }
+diesel_codegen = { version = "0.14", features = ["sqlite"] }
+
 # various utilities
 quick-error = "1.1"
 rand = "0.3"
-chrono = "0.3"
+chrono = "0.4"
 shellexpand = "1.0"
 lazy_static = "0.2"
 appdirs = "0.2"
