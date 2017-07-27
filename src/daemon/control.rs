@@ -60,11 +60,10 @@ impl Control {
             ::grpc::SingleResponse::completed(t)
         }
 
-        fn error<T: Send + 'static>(msg: String) -> ::grpc::SingleResponse<T> {
-            ::grpc::SingleResponse::err(::grpc::Error::GrpcMessage(::grpc::GrpcMessageError {
-                grpc_status: 10,  // Abort
-                grpc_message: msg,
-            }))
+        fn error<T: ::protobuf::MessageStatic>(msg: String) -> ::grpc::SingleResponse<T> {
+            let mut md = ::grpc::Metadata::new();
+            md.add(::grpc::MetadataKey::from("error"), msg.into_bytes().into());
+            ::grpc::SingleResponse::completed_with_metadata(md, T::new())
         }
 
         impl Wcd for ControlServerImpl {

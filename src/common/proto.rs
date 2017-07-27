@@ -131,22 +131,23 @@ impl From<config::ChangeMode> for ChangeMode {
     }
 }
 
-pub trait GrpcResultExt {
-    fn recover_as<F>(self, f: F) -> ::grpc::Result<ControlResponse>
-        where F: FnOnce(String) -> ControlResponse;
+pub trait GrpcResponseExt<T> {
+    fn fold<F1, F2, U>(self, success: F1, failure: F2) -> ControlResponse
+        where F1: FnOnce(U) -> ControlResponse,
+              F2: FnOnce(String) -> ControlResponse,
+              T: Into<U>;
 }
 
-impl GrpcResultExt for ::grpc::Result<ControlResponse> {
-    fn recover_as<F>(self, f: F) -> ::grpc::Result<ControlResponse>
-        where F: FnOnce(String) -> ControlResponse
+impl<T> GrpcResponseExt<T> for (::grpc::Metadata, T, ::grpc::Metadata) {
+    fn fold<F1, F2, U>(self, success: F1, failure: F2) -> ControlResponse
+        where F1: FnOnce(U) -> ControlResponse,
+              F2: FnOnce(String) -> ControlResponse,
+              T: Into<U>
     {
-        match self {
-            Ok(t) => Ok(t),
-            Err(e) => match e {
-                ::grpc::Error::GrpcMessage(ref msg) if msg.grpc_status == 10 =>  // Aborted
-                    Ok(f(msg.grpc_message.clone())),
-                other => Err(other),
-            }
+        let (md, v, _) = self;
+        match md.get("error") {
+            Some(msg_bytes) => failure(String::from_utf8(msg_bytes.into()).unwrap()),
+            None => success(v.into()),
         }
     }
 }

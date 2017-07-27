@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::result;
 
-use common::proto::GrpcResultExt;
+use common::proto::GrpcResponseExt;
 use common::grpc::wcd;
 use common::grpc::wcd_grpc::{WcdClient, Wcd};
 use common::proto::{ControlRequest, ControlResponse};
@@ -39,17 +39,15 @@ impl Client {
             ControlRequest::Terminate =>
                 Ok(self.grpc.terminate(Default::default(), wcd::Empty::new()).wait_drop_metadata()
                     .map(|_| ControlResponse::TerminateOk)?),
-            ControlRequest::GetStatus =>
-                Ok(self.grpc.get_status(Default::default(), wcd::Empty::new()).wait_drop_metadata()
-                    .map(From::from)
-                    .map(ControlResponse::StatusInfoOk)
-                    .recover_as(ControlResponse::StatusInfoFailed)?),
+            ControlRequest::GetStatus => {
+                Ok(self.grpc.get_status(Default::default(), wcd::Empty::new()).wait()?
+                    .fold(ControlResponse::StatusInfoOk, ControlResponse::StatusInfoFailed))
+            }
             ControlRequest::ChangePlaylist(playlist) => {
                 let mut playlist_name = wcd::PlaylistName::new();
                 playlist_name.set_name(playlist);
-                Ok(self.grpc.change_playlist(Default::default(), playlist_name).wait_drop_metadata()
-                    .map(|_| ControlResponse::ChangePlaylistOk)
-                    .recover_as(ControlResponse::ChangePlaylistFailed)?)
+                Ok(self.grpc.change_playlist(Default::default(), playlist_name).wait()?
+                    .fold(|_: wcd::Empty| ControlResponse::ChangePlaylistOk, ControlResponse::ChangePlaylistFailed))
             }
         }
     }

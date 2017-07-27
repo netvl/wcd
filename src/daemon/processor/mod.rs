@@ -253,6 +253,7 @@ impl<'a> StateActions<'a> {
 
             Ok(())
         } else {
+            warn!("Requested playlist {} does not exist", playlist_name);
             simple_error!(PlaylistDoesNotExist, "Specified playlist does not exist");
             Err(PlaylistDoesNotExist.into())
         }
