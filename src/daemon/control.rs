@@ -1,135 +1,105 @@
 use std::thread::{self, JoinHandle};
-use std::time::Duration as StdDuration;
-use std::io;
+use std::sync::{Arc, Barrier};
 
-use nanomsg::{Socket, Protocol};
-
-use common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope, ProtoError};
+use common::grpc::wcd;
+use common::grpc::wcd_grpc::{WcdServer, Wcd};
 use daemon::processor::Processor;
-use daemon::scheduler::Scheduler;
 
 pub struct Control {
     endpoint: String,
-    processor: Processor,
-    scheduler: Scheduler,
+    daemon: super::Daemon,
 }
 
 impl Control {
-    pub fn new(endpoint: String, processor: Processor, scheduler: Scheduler) -> Control {
+    pub fn new(endpoint: String, daemon: super::Daemon) -> Control {
         Control {
             endpoint: endpoint,
-            processor: processor,
-            scheduler: scheduler,
+            daemon: daemon,
         }
     }
 
-    pub fn start(mut self) -> JoinHandle<()> {
-        info!("Starting the control thread");
+    pub fn start(self) -> JoinHandle<()> {
+        info!("Starting control thread");
 
         thread::spawn(move || {
             self.prepare_and_loop();
-            self.scheduler.stop();
+            self.daemon.scheduler().stop();
         })
     }
 
-    fn prepare_and_loop(&mut self) {
-        let mut socket = match Socket::new(Protocol::Pair) {
-            Ok(socket) => socket,
-            Err(e) => {
-                warn!("Cannot create a control socket: {}", e);
-                return;
-            }
-        };
+    fn prepare_and_loop(&self) {
+        info!("Starting control server on {}", self.endpoint);
 
-        match socket.set_receive_timeout(1000) {
-            Ok(_) => {},
-            Err(e) => {
-                error!("Failed to set the control socket receive timeout: {}", e);
-                return;
-            }
+        let mut server = ::grpc::ServerBuilder::new_plain();
+        if let Err(e) = server.http.set_addr(&self.endpoint) {
+            error!("Setting listen address failed: {}", e);
+            return;
+        }
+        server.http.set_cpu_pool_threads(1);
+
+        let stop_barrier = Arc::new(Barrier::new(2));
+
+        server.add_service(WcdServer::new_service_def(ControlServerImpl {
+            processor: self.daemon.processor(),
+            stop_barrier: stop_barrier.clone(),
+        }));
+
+        let _server = server.build().expect("Creating the control server failed");
+
+        info!("Control server started, waiting for requests");
+        stop_barrier.wait();
+
+        info!("Stopping control server");  // will stop upon drop
+
+        struct ControlServerImpl {
+            processor: Processor,
+            stop_barrier: Arc<Barrier>,
         }
 
-        match socket.set_send_timeout(3000) {
-            Ok(_) => {},
-            Err(e) => {
-                error!("Failed to set the control socket send timeout: {}", e);
-                return;
-            }
+        fn completed<T: Send + 'static>(t: T) -> ::grpc::SingleResponse<T> {
+            ::grpc::SingleResponse::completed(t)
         }
 
-        let mut ep = match socket.bind(&self.endpoint) {
-            Ok(ep) => ep,
-            Err(e) => {
-                error!("Failed to bind the control socket to {}: {}", self.endpoint, e);
-                return;
-            }
-        };
-
-        info!("Control socket created on {}, waiting for requests", self.endpoint);
-
-        loop {
-            match proto::read_message(&mut socket) {
-                Ok(ControlEnvelope { version, content: req }) => {
-                    if version != proto::VERSION {
-                        warn!("Received a control request with invalid version {}, expected {}", version, proto::VERSION);
-                        continue;
-                    }
-
-                    debug!("Received a request from a client: {:?}", req);
-                    let mut should_break = false;
-                    let resp = match req {
-                        ControlRequest::TriggerChange => {
-                            let _ = self.processor.trigger(true);
-                            ControlResponse::TriggerChangeOk
-                        }
-                        ControlRequest::RefreshPlaylists => {
-                            let _ = self.processor.refresh_playlists(true);
-                            ControlResponse::RefreshPlaylistsOk
-                        }
-                        ControlRequest::Terminate => {
-                            should_break = true;
-                            ControlResponse::TerminateOk
-                        }
-                        ControlRequest::GetStatus => {
-                            match self.processor.get_status() {
-                                Ok(status_info) => ControlResponse::StatusInfoOk(status_info),
-                                Err(_) => ControlResponse::StatusInfoFailed,
-                            }
-                        }
-                        ControlRequest::ChangePlaylist(name) => {
-                            match self.processor.change_playlist(&name) {
-                                Ok(_) => ControlResponse::ChangePlaylistOk,
-                                Err(_) => ControlResponse::ChangePlaylistFailed,
-                            }
-                        }
-                    };
-
-                    let envelope = ControlEnvelope::wrap(resp);
-                    match proto::write_message(&mut socket, &envelope) {
-                        Ok(_) => {}
-                        Err(e) => {
-                            error!("Error writing response: {}", e);
-                        }
-                    }
-
-                    if should_break {
-                        break;
-                    }
-                }
-                Err(ProtoError::Io(ref e)) if e.kind() == io::ErrorKind::TimedOut => {
-                    // this is fine, continue
-                }
-                Err(e) => {
-                    error!("Error reading request: {}", e);
-                    thread::sleep(StdDuration::from_secs(1));  // just in case
-                }
-            }
+        fn error<T: Send + 'static>(msg: String) -> ::grpc::SingleResponse<T> {
+            ::grpc::SingleResponse::err(::grpc::Error::GrpcMessage(::grpc::GrpcMessageError {
+                grpc_status: 10,  // Abort
+                grpc_message: msg,
+            }))
         }
 
-        info!("Stopping the control thread");
+        impl Wcd for ControlServerImpl {
+            fn trigger_change(&self, _: ::grpc::RequestOptions, _: wcd::Empty) -> ::grpc::SingleResponse<wcd::Empty> {
+                match self.processor.trigger(true) {
+                    Ok(_) => completed(wcd::Empty::new()),
+                    Err(e) => error(e.to_string()),
+                }
+            }
 
-        if let Err(e) = ep.shutdown() {
-            warn!("Failed to shut down socket endpoint: {}", e);
+            fn refresh_playlists(&self, _: ::grpc::RequestOptions, _: wcd::Empty) -> ::grpc::SingleResponse<wcd::Empty> {
+                match self.processor.refresh_playlists(true) {
+                    Ok(_) => completed(wcd::Empty::new()),
+                    Err(e) => error(e.to_string()),
+                }
+            }
+
+            fn terminate(&self, _: ::grpc::RequestOptions, _: wcd::Empty) -> ::grpc::SingleResponse<wcd::Empty> {
+                self.stop_barrier.wait();
+                completed(wcd::Empty::new())
+            }
+
+            fn get_status(&self, _: ::grpc::RequestOptions, _: wcd::Empty) -> ::grpc::SingleResponse<wcd::StatusInfo> {
+                match self.processor.get_status() {
+                    Ok(status_info) => completed(status_info.into()),
+                    Err(e) => error(e.to_string()),
+                }
+            }
+
+            fn change_playlist(&self, _: ::grpc::RequestOptions, p: wcd::PlaylistName) -> ::grpc::SingleResponse<wcd::Empty> {
+                match self.processor.change_playlist(p.get_name()) {
+                    Ok(_) => completed(wcd::Empty::new()),
+                    Err(e) => error(e.to_string()),
+                }
+            }
         }
     }
 }

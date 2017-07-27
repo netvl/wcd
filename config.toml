@@ -1,5 +1,5 @@
 [common]
-endpoint = "ipc:///tmp/wcd.ipc"
+endpoint = "127.0.0.1:17345"
 
 [server]
 default_playlist = "default"

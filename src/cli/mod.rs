@@ -4,11 +4,13 @@ use std::borrow::Cow;
 use std::path::Path;
 
 use clap::{App, ArgMatches};
-use nanomsg::{Socket, Protocol};
+use chrono::{Local, TimeZone};
 
 use common::config;
-use common::proto::{self, ControlRequest, ControlResponse, ControlEnvelope, StatusInfo, PlaylistInfo, ChangeMode};
-use chrono::{Local, TimeZone};
+use common::proto::{ControlRequest, ControlResponse, StatusInfo, PlaylistInfo, ChangeMode};
+use self::client::Client;
+
+mod client;
 
 macro_rules! abort {
     ($code:expr) => {::std::process::exit($code)};
@@ -44,13 +46,8 @@ pub fn main(config_path: Cow<Path>, subcommand: &str, matches: &ArgMatches) {
 
     let endpoint = config.common.endpoint;
 
-    let mut socket = Socket::new(Protocol::Pair)
-        .unwrap_or_else(|e| abort!(1, "Error creating nanomsg socket: {}", e));
-    socket.set_send_timeout(1000)  // 1 second is more than enough
-        .unwrap_or_else(|e| abort!(1, "Error setting socket timeout: {}", e));
-
-    let mut ep = socket.connect(&endpoint)
-        .unwrap_or_else(|e| abort!(1, "Error connecting socket to {}: {}", endpoint, e));
+    let client = client::Client::new(&endpoint)
+        .unwrap_or_else(|e| abort!(1, "Error creating a gRPC client: {}", e));
 
     let req = match subcommand {
         "trigger" => ControlRequest::TriggerChange,
@@ -61,7 +58,7 @@ pub fn main(config_path: Cow<Path>, subcommand: &str, matches: &ArgMatches) {
             let playlist_name = matches.value_of("NAME").unwrap();
 
             if matches.is_present("or-trigger") {
-                match make_request(&mut socket, ControlRequest::GetStatus) {
+                match make_request(&client, ControlRequest::GetStatus) {
                     ControlResponse::StatusInfoOk(StatusInfo { current_playlist, .. }) => {
                         if playlist_name == current_playlist {
                             ControlRequest::TriggerChange
@@ -78,32 +75,19 @@ pub fn main(config_path: Cow<Path>, subcommand: &str, matches: &ArgMatches) {
         _ => unreachable!()
     };
 
-    display_response(make_request(&mut socket, req));
-
-    ep.shutdown().unwrap_or_else(|e| abort!(1, "Error closing socket endpoint: {}", e));
+    display_response(make_request(&client, req));
 }
 
-fn make_request(socket: &mut Socket, req: ControlRequest) -> ControlResponse {
-    let envelope = ControlEnvelope::wrap(req);
-
-    proto::write_message(socket, &envelope)
-        .unwrap_or_else(|e| abort!(1, "Error sending request: {}", e));
-
-    let ControlEnvelope { version, content: resp } = proto::read_message(socket)
-        .unwrap_or_else(|e| abort!(1, "Error receiving response: {}", e));
-
-    if version != proto::VERSION {
-        abort!(1, "Received response with invalid version {}, expected {}", version, proto::VERSION);
-    }
-
-    resp
+fn make_request(client: &Client, req: ControlRequest) -> ControlResponse {
+    client.send(req)
+        .unwrap_or_else(|e| abort!(1, "Error sending request: {}", e))
 }
 
 fn display_response(resp: ControlResponse) {
     match resp {
         ControlResponse::TriggerChangeOk | ControlResponse::RefreshPlaylistsOk |
         ControlResponse::TerminateOk | ControlResponse::ChangePlaylistOk => {}
-        ControlResponse::ChangePlaylistFailed => abort!(1, "Failed to change playlist"),
+        ControlResponse::ChangePlaylistFailed(msg) => abort!(1, "Failed to change playlist: {}", msg),
         ControlResponse::StatusInfoOk(StatusInfo { playlists, current_playlist, last_update }) => {
             println!("Last change time: {}", TimestampDisplay(last_update));
             println!("Current playlist: {}", current_playlist);
@@ -117,7 +101,7 @@ fn display_response(resp: ControlResponse) {
                 println!("No playlists available");
             }
         }
-        ControlResponse::StatusInfoFailed => abort!(1, "Failed to retrieve status info")
+        ControlResponse::StatusInfoFailed(msg) => abort!(1, "Failed to retrieve status info: {}", msg)
     }
 }
 

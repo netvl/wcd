@@ -13,7 +13,7 @@ pub enum LogLevel {
 
 fn build_log_config(level: LogLevel) -> Config {
     let encoder = PatternEncoder::new(match level {
-        LogLevel::Normal | LogLevel::Debug => "[{h({l:.1})}] {m}{n}",
+        LogLevel::Normal | LogLevel::Debug => "[{h({l:.1})}] [{M}] {m}{n}",
         LogLevel::Trace => "[{h({l:.1})}] [{f}:{L}] {m}{n}"
     });
 
@@ -24,18 +24,26 @@ fn build_log_config(level: LogLevel) -> Config {
     let appender = Appender::builder()
         .build("console", Box::new(stdout));
 
-    let root = Root::builder()
-        .appender("console")
-        .build(match level {
+    let app_logger = Logger::builder()
+        .build("wcd", match level {
             LogLevel::Normal => LogLevelFilter::Info,
             LogLevel::Debug => LogLevelFilter::Debug,
             LogLevel::Trace => LogLevelFilter::Trace,
         });
 
-    Config::builder().appender(appender).build(root).unwrap()
+    let root = Root::builder()
+        .appender("console")
+        .build(LogLevelFilter::Error);
+
+    Config::builder()
+        .appender(appender)
+        .logger(app_logger)
+        .build(root)
+        .unwrap()
 }
 
 pub fn configure_or_panic(level: LogLevel) {
     let log_config = build_log_config(level);
     log4rs::init_config(log_config).unwrap();
 }
+

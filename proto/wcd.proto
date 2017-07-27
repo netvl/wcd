@@ -1,0 +1,41 @@
+
+syntax = "proto3";
+
+package proto;
+
+service Wcd {
+    rpc TriggerChange (Empty) returns (Empty) {}
+    rpc RefreshPlaylists (Empty) returns (Empty) {}
+    rpc Terminate (Empty) returns (Empty) {}
+    rpc GetStatus (Empty) returns (StatusInfo) {}
+    rpc ChangePlaylist (PlaylistName) returns (Empty) {}
+}
+
+message Empty {
+}
+
+message PlaylistName {
+    string name = 1;
+}
+
+message StatusInfo {
+    map<string, PlaylistInfo> playlists = 1;
+    string current_playlist = 2;
+    int64 last_update = 3;
+}
+
+message PlaylistInfo {
+    repeated string directories = 1;
+    repeated string files = 2;
+    uint64 total_files = 3;
+    ChangeMode mode = 4;
+    string current_image = 5;
+    bool trigger_on_select = 6;
+    bool use_last_on_select = 7;
+    int64 next_update = 8;
+}
+
+enum ChangeMode {
+    SEQUENTIAL = 0;
+    RANDOM = 1;
+}

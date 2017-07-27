@@ -1,4 +1,3 @@
-use std::sync::{Arc, Mutex};
 use std::path::Path;
 use std::error::Error;
 use std::ops::Add;
@@ -68,37 +67,45 @@ pub type Result<T> = ::std::result::Result<T, Box<Error>>;  // unit for now
 
 #[derive(Clone)]
 pub struct Stats {
-    state: Arc<Mutex<State>>,
+    daemon: super::Daemon,
 }
 
 impl Stats {
-    pub fn new(path: &Path) -> Result<Stats> {
-        let state = Arc::new(Mutex::new(State::new(path)?));
-        Ok(Stats { state, })
+    pub fn new(daemon: super::Daemon) -> Stats {
+        Stats { daemon, }
     }
 
     pub fn register_displays(&self, file_name: &str, n: i64) -> Result<()> {
-        let guard = self.state.lock().unwrap();
-        guard.register_displays(file_name, n)
+        if let Some(ref stats) = self.daemon.state.lock().stats {
+            stats.borrow().register_displays(file_name, n)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn register_skips(&self, file_name: &str, n: i64) -> Result<()> {
-        let guard = self.state.lock().unwrap();
-        guard.register_skips(file_name, n)
+        if let Some(ref stats) = self.daemon.state.lock().stats {
+            stats.borrow().register_skips(file_name, n)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn register_display_time(&self, file_name: &str, time_sec: i64) -> Result<()> {
-        let guard = self.state.lock().unwrap();
-        guard.register_display_time(file_name, time_sec)
+        if let Some(ref stats) = self.daemon.state.lock().stats {
+            stats.borrow().register_display_time(file_name, time_sec)
+        } else {
+            Ok(())
+        }
     }
 }
 
-struct State {
+pub struct State {
     conn: SqliteConnection,
 }
 
 impl State {
-    fn new(path: &Path) -> Result<State> {
+    pub fn new(path: &Path) -> Result<State> {
         info!("Establishing connection to an SQLite database: {}", path.display());
 
         #[derive(Debug)]
