@@ -1,9 +1,11 @@
 use std::thread::{self, JoinHandle};
 use std::sync::{Arc, Barrier};
+use std::iter::FromIterator;
 
 use common::grpc::wcd;
 use common::grpc::wcd_grpc::{WcdServer, Wcd};
 use daemon::processor::Processor;
+use daemon::stats::Stats;
 
 pub struct Control {
     endpoint: String,
@@ -41,6 +43,7 @@ impl Control {
 
         server.add_service(WcdServer::new_service_def(ControlServerImpl {
             processor: self.daemon.processor(),
+            stats: self.daemon.stats(),
             stop_barrier: stop_barrier.clone(),
         }));
 
@@ -53,6 +56,7 @@ impl Control {
 
         struct ControlServerImpl {
             processor: Processor,
+            stats: Option<Stats>,
             stop_barrier: Arc<Barrier>,
         }
 
@@ -96,6 +100,24 @@ impl Control {
             fn change_playlist(&self, _: ::grpc::RequestOptions, p: wcd::PlaylistName) -> ::grpc::SingleResponse<wcd::Empty> {
                 match self.processor.change_playlist(p.get_name()) {
                     Ok(_) => completed(wcd::Empty::new()),
+                    Err(e) => error(e.to_string()),
+                }
+            }
+
+            fn get_statistics(&self, _: ::grpc::RequestOptions, _: wcd::Empty) -> ::grpc::SingleResponse<wcd::StatsInfo> {
+                let stats = match self.stats {
+                    Some(ref stats) => stats,
+                    None => return error("Statistics collection is disabled".into())
+                };
+
+                match stats.load() {
+                    Ok(image_stats) => {
+                        let mut proto = wcd::StatsInfo::new();
+                        proto.set_image_stats(::protobuf::RepeatedField::from_iter(
+                            image_stats.into_iter().map(Into::into)
+                        ));
+                        completed(proto)
+                    }
                     Err(e) => error(e.to_string()),
                 }
             }

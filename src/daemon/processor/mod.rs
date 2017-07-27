@@ -260,6 +260,7 @@ impl<'a> StateActions<'a> {
     }
 
     pub fn update_stats(&self) -> ProcessorResult<()> {
+        // TODO: change this to use timestamps
         self.with_stats_and_current_path(|stats, current| {
             stats.register_display_time(current, UPDATE_STATS_INTERVAL_SECS)
         });

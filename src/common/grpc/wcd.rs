@@ -351,7 +351,7 @@ impl StatusInfo {
         }
     }
 
-    // repeated .proto.StatusInfo.PlaylistsEntry playlists = 1;
+    // repeated .wcd.StatusInfo.PlaylistsEntry playlists = 1;
 
     pub fn clear_playlists(&mut self) {
         self.playlists.clear();
@@ -709,7 +709,7 @@ impl PlaylistInfo {
         &mut self.total_files
     }
 
-    // .proto.ChangeMode mode = 4;
+    // .wcd.ChangeMode mode = 4;
 
     pub fn clear_mode(&mut self) {
         self.mode = ChangeMode::SEQUENTIAL;
@@ -1075,6 +1075,494 @@ impl ::protobuf::reflect::ProtobufValue for PlaylistInfo {
     }
 }
 
+#[derive(PartialEq,Clone,Default)]
+pub struct StatsInfo {
+    // message fields
+    pub image_stats: ::protobuf::RepeatedField<ImageStatsInfo>,
+    // special fields
+    unknown_fields: ::protobuf::UnknownFields,
+    cached_size: ::protobuf::CachedSize,
+}
+
+// see codegen.rs for the explanation why impl Sync explicitly
+unsafe impl ::std::marker::Sync for StatsInfo {}
+
+impl StatsInfo {
+    pub fn new() -> StatsInfo {
+        ::std::default::Default::default()
+    }
+
+    pub fn default_instance() -> &'static StatsInfo {
+        static mut instance: ::protobuf::lazy::Lazy<StatsInfo> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const StatsInfo,
+        };
+        unsafe {
+            instance.get(StatsInfo::new)
+        }
+    }
+
+    // repeated .wcd.ImageStatsInfo image_stats = 1;
+
+    pub fn clear_image_stats(&mut self) {
+        self.image_stats.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_image_stats(&mut self, v: ::protobuf::RepeatedField<ImageStatsInfo>) {
+        self.image_stats = v;
+    }
+
+    // Mutable pointer to the field.
+    pub fn mut_image_stats(&mut self) -> &mut ::protobuf::RepeatedField<ImageStatsInfo> {
+        &mut self.image_stats
+    }
+
+    // Take field
+    pub fn take_image_stats(&mut self) -> ::protobuf::RepeatedField<ImageStatsInfo> {
+        ::std::mem::replace(&mut self.image_stats, ::protobuf::RepeatedField::new())
+    }
+
+    pub fn get_image_stats(&self) -> &[ImageStatsInfo] {
+        &self.image_stats
+    }
+
+    fn get_image_stats_for_reflect(&self) -> &::protobuf::RepeatedField<ImageStatsInfo> {
+        &self.image_stats
+    }
+
+    fn mut_image_stats_for_reflect(&mut self) -> &mut ::protobuf::RepeatedField<ImageStatsInfo> {
+        &mut self.image_stats
+    }
+}
+
+impl ::protobuf::Message for StatsInfo {
+    fn is_initialized(&self) -> bool {
+        for v in &self.image_stats {
+            if !v.is_initialized() {
+                return false;
+            }
+        };
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_repeated_message_into(wire_type, is, &mut self.image_stats)?;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        for value in &self.image_stats {
+            let len = value.compute_size();
+            my_size += 1 + ::protobuf::rt::compute_raw_varint32_size(len) + len;
+        };
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
+        for v in &self.image_stats {
+            os.write_tag(1, ::protobuf::wire_format::WireTypeLengthDelimited)?;
+            os.write_raw_varint32(v.get_cached_size())?;
+            v.write_to_with_cached_sizes(os)?;
+        };
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &::std::any::Any {
+        self as &::std::any::Any
+    }
+    fn as_any_mut(&mut self) -> &mut ::std::any::Any {
+        self as &mut ::std::any::Any
+    }
+    fn into_any(self: Box<Self>) -> ::std::boxed::Box<::std::any::Any> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        ::protobuf::MessageStatic::descriptor_static(None::<Self>)
+    }
+}
+
+impl ::protobuf::MessageStatic for StatsInfo {
+    fn new() -> StatsInfo {
+        StatsInfo::new()
+    }
+
+    fn descriptor_static(_: ::std::option::Option<StatsInfo>) -> &'static ::protobuf::reflect::MessageDescriptor {
+        static mut descriptor: ::protobuf::lazy::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const ::protobuf::reflect::MessageDescriptor,
+        };
+        unsafe {
+            descriptor.get(|| {
+                let mut fields = ::std::vec::Vec::new();
+                fields.push(::protobuf::reflect::accessor::make_repeated_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<ImageStatsInfo>>(
+                    "image_stats",
+                    StatsInfo::get_image_stats_for_reflect,
+                    StatsInfo::mut_image_stats_for_reflect,
+                ));
+                ::protobuf::reflect::MessageDescriptor::new::<StatsInfo>(
+                    "StatsInfo",
+                    fields,
+                    file_descriptor_proto()
+                )
+            })
+        }
+    }
+}
+
+impl ::protobuf::Clear for StatsInfo {
+    fn clear(&mut self) {
+        self.clear_image_stats();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for StatsInfo {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for StatsInfo {
+    fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
+        ::protobuf::reflect::ProtobufValueRef::Message(self)
+    }
+}
+
+#[derive(PartialEq,Clone,Default)]
+pub struct ImageStatsInfo {
+    // message fields
+    pub filename: ::std::string::String,
+    pub total_displays: i64,
+    pub total_skips: i64,
+    pub total_display_time: i64,
+    // special fields
+    unknown_fields: ::protobuf::UnknownFields,
+    cached_size: ::protobuf::CachedSize,
+}
+
+// see codegen.rs for the explanation why impl Sync explicitly
+unsafe impl ::std::marker::Sync for ImageStatsInfo {}
+
+impl ImageStatsInfo {
+    pub fn new() -> ImageStatsInfo {
+        ::std::default::Default::default()
+    }
+
+    pub fn default_instance() -> &'static ImageStatsInfo {
+        static mut instance: ::protobuf::lazy::Lazy<ImageStatsInfo> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const ImageStatsInfo,
+        };
+        unsafe {
+            instance.get(ImageStatsInfo::new)
+        }
+    }
+
+    // string filename = 1;
+
+    pub fn clear_filename(&mut self) {
+        self.filename.clear();
+    }
+
+    // Param is passed by value, moved
+    pub fn set_filename(&mut self, v: ::std::string::String) {
+        self.filename = v;
+    }
+
+    // Mutable pointer to the field.
+    // If field is not initialized, it is initialized with default value first.
+    pub fn mut_filename(&mut self) -> &mut ::std::string::String {
+        &mut self.filename
+    }
+
+    // Take field
+    pub fn take_filename(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.filename, ::std::string::String::new())
+    }
+
+    pub fn get_filename(&self) -> &str {
+        &self.filename
+    }
+
+    fn get_filename_for_reflect(&self) -> &::std::string::String {
+        &self.filename
+    }
+
+    fn mut_filename_for_reflect(&mut self) -> &mut ::std::string::String {
+        &mut self.filename
+    }
+
+    // int64 total_displays = 2;
+
+    pub fn clear_total_displays(&mut self) {
+        self.total_displays = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_total_displays(&mut self, v: i64) {
+        self.total_displays = v;
+    }
+
+    pub fn get_total_displays(&self) -> i64 {
+        self.total_displays
+    }
+
+    fn get_total_displays_for_reflect(&self) -> &i64 {
+        &self.total_displays
+    }
+
+    fn mut_total_displays_for_reflect(&mut self) -> &mut i64 {
+        &mut self.total_displays
+    }
+
+    // int64 total_skips = 3;
+
+    pub fn clear_total_skips(&mut self) {
+        self.total_skips = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_total_skips(&mut self, v: i64) {
+        self.total_skips = v;
+    }
+
+    pub fn get_total_skips(&self) -> i64 {
+        self.total_skips
+    }
+
+    fn get_total_skips_for_reflect(&self) -> &i64 {
+        &self.total_skips
+    }
+
+    fn mut_total_skips_for_reflect(&mut self) -> &mut i64 {
+        &mut self.total_skips
+    }
+
+    // int64 total_display_time = 4;
+
+    pub fn clear_total_display_time(&mut self) {
+        self.total_display_time = 0;
+    }
+
+    // Param is passed by value, moved
+    pub fn set_total_display_time(&mut self, v: i64) {
+        self.total_display_time = v;
+    }
+
+    pub fn get_total_display_time(&self) -> i64 {
+        self.total_display_time
+    }
+
+    fn get_total_display_time_for_reflect(&self) -> &i64 {
+        &self.total_display_time
+    }
+
+    fn mut_total_display_time_for_reflect(&mut self) -> &mut i64 {
+        &mut self.total_display_time
+    }
+}
+
+impl ::protobuf::Message for ImageStatsInfo {
+    fn is_initialized(&self) -> bool {
+        true
+    }
+
+    fn merge_from(&mut self, is: &mut ::protobuf::CodedInputStream) -> ::protobuf::ProtobufResult<()> {
+        while !is.eof()? {
+            let (field_number, wire_type) = is.read_tag_unpack()?;
+            match field_number {
+                1 => {
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.filename)?;
+                },
+                2 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_int64()?;
+                    self.total_displays = tmp;
+                },
+                3 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_int64()?;
+                    self.total_skips = tmp;
+                },
+                4 => {
+                    if wire_type != ::protobuf::wire_format::WireTypeVarint {
+                        return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
+                    }
+                    let tmp = is.read_int64()?;
+                    self.total_display_time = tmp;
+                },
+                _ => {
+                    ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
+                },
+            };
+        }
+        ::std::result::Result::Ok(())
+    }
+
+    // Compute sizes of nested messages
+    #[allow(unused_variables)]
+    fn compute_size(&self) -> u32 {
+        let mut my_size = 0;
+        if !self.filename.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.filename);
+        }
+        if self.total_displays != 0 {
+            my_size += ::protobuf::rt::value_size(2, self.total_displays, ::protobuf::wire_format::WireTypeVarint);
+        }
+        if self.total_skips != 0 {
+            my_size += ::protobuf::rt::value_size(3, self.total_skips, ::protobuf::wire_format::WireTypeVarint);
+        }
+        if self.total_display_time != 0 {
+            my_size += ::protobuf::rt::value_size(4, self.total_display_time, ::protobuf::wire_format::WireTypeVarint);
+        }
+        my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
+        self.cached_size.set(my_size);
+        my_size
+    }
+
+    fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream) -> ::protobuf::ProtobufResult<()> {
+        if !self.filename.is_empty() {
+            os.write_string(1, &self.filename)?;
+        }
+        if self.total_displays != 0 {
+            os.write_int64(2, self.total_displays)?;
+        }
+        if self.total_skips != 0 {
+            os.write_int64(3, self.total_skips)?;
+        }
+        if self.total_display_time != 0 {
+            os.write_int64(4, self.total_display_time)?;
+        }
+        os.write_unknown_fields(self.get_unknown_fields())?;
+        ::std::result::Result::Ok(())
+    }
+
+    fn get_cached_size(&self) -> u32 {
+        self.cached_size.get()
+    }
+
+    fn get_unknown_fields(&self) -> &::protobuf::UnknownFields {
+        &self.unknown_fields
+    }
+
+    fn mut_unknown_fields(&mut self) -> &mut ::protobuf::UnknownFields {
+        &mut self.unknown_fields
+    }
+
+    fn as_any(&self) -> &::std::any::Any {
+        self as &::std::any::Any
+    }
+    fn as_any_mut(&mut self) -> &mut ::std::any::Any {
+        self as &mut ::std::any::Any
+    }
+    fn into_any(self: Box<Self>) -> ::std::boxed::Box<::std::any::Any> {
+        self
+    }
+
+    fn descriptor(&self) -> &'static ::protobuf::reflect::MessageDescriptor {
+        ::protobuf::MessageStatic::descriptor_static(None::<Self>)
+    }
+}
+
+impl ::protobuf::MessageStatic for ImageStatsInfo {
+    fn new() -> ImageStatsInfo {
+        ImageStatsInfo::new()
+    }
+
+    fn descriptor_static(_: ::std::option::Option<ImageStatsInfo>) -> &'static ::protobuf::reflect::MessageDescriptor {
+        static mut descriptor: ::protobuf::lazy::Lazy<::protobuf::reflect::MessageDescriptor> = ::protobuf::lazy::Lazy {
+            lock: ::protobuf::lazy::ONCE_INIT,
+            ptr: 0 as *const ::protobuf::reflect::MessageDescriptor,
+        };
+        unsafe {
+            descriptor.get(|| {
+                let mut fields = ::std::vec::Vec::new();
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
+                    "filename",
+                    ImageStatsInfo::get_filename_for_reflect,
+                    ImageStatsInfo::mut_filename_for_reflect,
+                ));
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
+                    "total_displays",
+                    ImageStatsInfo::get_total_displays_for_reflect,
+                    ImageStatsInfo::mut_total_displays_for_reflect,
+                ));
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
+                    "total_skips",
+                    ImageStatsInfo::get_total_skips_for_reflect,
+                    ImageStatsInfo::mut_total_skips_for_reflect,
+                ));
+                fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt64>(
+                    "total_display_time",
+                    ImageStatsInfo::get_total_display_time_for_reflect,
+                    ImageStatsInfo::mut_total_display_time_for_reflect,
+                ));
+                ::protobuf::reflect::MessageDescriptor::new::<ImageStatsInfo>(
+                    "ImageStatsInfo",
+                    fields,
+                    file_descriptor_proto()
+                )
+            })
+        }
+    }
+}
+
+impl ::protobuf::Clear for ImageStatsInfo {
+    fn clear(&mut self) {
+        self.clear_filename();
+        self.clear_total_displays();
+        self.clear_total_skips();
+        self.clear_total_display_time();
+        self.unknown_fields.clear();
+    }
+}
+
+impl ::std::fmt::Debug for ImageStatsInfo {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        ::protobuf::text_format::fmt(self, f)
+    }
+}
+
+impl ::protobuf::reflect::ProtobufValue for ImageStatsInfo {
+    fn as_ref(&self) -> ::protobuf::reflect::ProtobufValueRef {
+        ::protobuf::reflect::ProtobufValueRef::Message(self)
+    }
+}
+
 #[derive(Clone,PartialEq,Eq,Debug,Hash)]
 pub enum ChangeMode {
     SEQUENTIAL = 0,
@@ -1131,27 +1619,33 @@ impl ::protobuf::reflect::ProtobufValue for ChangeMode {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\x0fproto/wcd.proto\x12\x05proto\"\x07\n\x05Empty\"\"\n\x0cPlaylistNam\
-    e\x12\x12\n\x04name\x18\x01\x20\x01(\tR\x04name\"\xeb\x01\n\nStatusInfo\
-    \x12>\n\tplaylists\x18\x01\x20\x03(\x0b2\x20.proto.StatusInfo.PlaylistsE\
-    ntryR\tplaylists\x12)\n\x10current_playlist\x18\x02\x20\x01(\tR\x0fcurre\
-    ntPlaylist\x12\x1f\n\x0blast_update\x18\x03\x20\x01(\x03R\nlastUpdate\
-    \x1aQ\n\x0ePlaylistsEntry\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\
-    \x12)\n\x05value\x18\x02\x20\x01(\x0b2\x13.proto.PlaylistInfoR\x05value:\
-    \x028\x01\"\xad\x02\n\x0cPlaylistInfo\x12\x20\n\x0bdirectories\x18\x01\
-    \x20\x03(\tR\x0bdirectories\x12\x14\n\x05files\x18\x02\x20\x03(\tR\x05fi\
-    les\x12\x1f\n\x0btotal_files\x18\x03\x20\x01(\x04R\ntotalFiles\x12%\n\
-    \x04mode\x18\x04\x20\x01(\x0e2\x11.proto.ChangeModeR\x04mode\x12#\n\rcur\
-    rent_image\x18\x05\x20\x01(\tR\x0ccurrentImage\x12*\n\x11trigger_on_sele\
-    ct\x18\x06\x20\x01(\x08R\x0ftriggerOnSelect\x12+\n\x12use_last_on_select\
-    \x18\x07\x20\x01(\x08R\x0fuseLastOnSelect\x12\x1f\n\x0bnext_update\x18\
-    \x08\x20\x01(\x03R\nnextUpdate*(\n\nChangeMode\x12\x0e\n\nSEQUENTIAL\x10\
-    \0\x12\n\n\x06RANDOM\x10\x012\xf8\x01\n\x03Wcd\x12-\n\rTriggerChange\x12\
-    \x0c.proto.Empty\x1a\x0c.proto.Empty\"\0\x120\n\x10RefreshPlaylists\x12\
-    \x0c.proto.Empty\x1a\x0c.proto.Empty\"\0\x12)\n\tTerminate\x12\x0c.proto\
-    .Empty\x1a\x0c.proto.Empty\"\0\x12.\n\tGetStatus\x12\x0c.proto.Empty\x1a\
-    \x11.proto.StatusInfo\"\0\x125\n\x0eChangePlaylist\x12\x13.proto.Playlis\
-    tName\x1a\x0c.proto.Empty\"\0b\x06proto3\
+    \n\x0fproto/wcd.proto\x12\x03wcd\"\x07\n\x05Empty\"\"\n\x0cPlaylistName\
+    \x12\x12\n\x04name\x18\x01\x20\x01(\tR\x04name\"\xe7\x01\n\nStatusInfo\
+    \x12<\n\tplaylists\x18\x01\x20\x03(\x0b2\x1e.wcd.StatusInfo.PlaylistsEnt\
+    ryR\tplaylists\x12)\n\x10current_playlist\x18\x02\x20\x01(\tR\x0fcurrent\
+    Playlist\x12\x1f\n\x0blast_update\x18\x03\x20\x01(\x03R\nlastUpdate\x1aO\
+    \n\x0ePlaylistsEntry\x12\x10\n\x03key\x18\x01\x20\x01(\tR\x03key\x12'\n\
+    \x05value\x18\x02\x20\x01(\x0b2\x11.wcd.PlaylistInfoR\x05value:\x028\x01\
+    \"\xab\x02\n\x0cPlaylistInfo\x12\x20\n\x0bdirectories\x18\x01\x20\x03(\t\
+    R\x0bdirectories\x12\x14\n\x05files\x18\x02\x20\x03(\tR\x05files\x12\x1f\
+    \n\x0btotal_files\x18\x03\x20\x01(\x04R\ntotalFiles\x12#\n\x04mode\x18\
+    \x04\x20\x01(\x0e2\x0f.wcd.ChangeModeR\x04mode\x12#\n\rcurrent_image\x18\
+    \x05\x20\x01(\tR\x0ccurrentImage\x12*\n\x11trigger_on_select\x18\x06\x20\
+    \x01(\x08R\x0ftriggerOnSelect\x12+\n\x12use_last_on_select\x18\x07\x20\
+    \x01(\x08R\x0fuseLastOnSelect\x12\x1f\n\x0bnext_update\x18\x08\x20\x01(\
+    \x03R\nnextUpdate\"A\n\tStatsInfo\x124\n\x0bimage_stats\x18\x01\x20\x03(\
+    \x0b2\x13.wcd.ImageStatsInfoR\nimageStats\"\xa2\x01\n\x0eImageStatsInfo\
+    \x12\x1a\n\x08filename\x18\x01\x20\x01(\tR\x08filename\x12%\n\x0etotal_d\
+    isplays\x18\x02\x20\x01(\x03R\rtotalDisplays\x12\x1f\n\x0btotal_skips\
+    \x18\x03\x20\x01(\x03R\ntotalSkips\x12,\n\x12total_display_time\x18\x04\
+    \x20\x01(\x03R\x10totalDisplayTime*(\n\nChangeMode\x12\x0e\n\nSEQUENTIAL\
+    \x10\0\x12\n\n\x06RANDOM\x10\x012\x93\x02\n\x03Wcd\x12)\n\rTriggerChange\
+    \x12\n.wcd.Empty\x1a\n.wcd.Empty\"\0\x12,\n\x10RefreshPlaylists\x12\n.wc\
+    d.Empty\x1a\n.wcd.Empty\"\0\x12%\n\tTerminate\x12\n.wcd.Empty\x1a\n.wcd.\
+    Empty\"\0\x12*\n\tGetStatus\x12\n.wcd.Empty\x1a\x0f.wcd.StatusInfo\"\0\
+    \x121\n\x0eChangePlaylist\x12\x11.wcd.PlaylistName\x1a\n.wcd.Empty\"\0\
+    \x12-\n\rGetStatistics\x12\n.wcd.Empty\x1a\x0e.wcd.StatsInfo\"\0b\x06pro\
+    to3\
 ";
 
 static mut file_descriptor_proto_lazy: ::protobuf::lazy::Lazy<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::lazy::Lazy {

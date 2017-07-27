@@ -1,7 +1,7 @@
 
 syntax = "proto3";
 
-package proto;
+package wcd;
 
 service Wcd {
     rpc TriggerChange (Empty) returns (Empty) {}
@@ -9,6 +9,7 @@ service Wcd {
     rpc Terminate (Empty) returns (Empty) {}
     rpc GetStatus (Empty) returns (StatusInfo) {}
     rpc ChangePlaylist (PlaylistName) returns (Empty) {}
+    rpc GetStatistics (Empty) returns (StatsInfo) {}
 }
 
 message Empty {
@@ -38,4 +39,15 @@ message PlaylistInfo {
 enum ChangeMode {
     SEQUENTIAL = 0;
     RANDOM = 1;
+}
+
+message StatsInfo {
+    repeated ImageStatsInfo image_stats = 1;
+}
+
+message ImageStatsInfo {
+    string filename = 1;
+    int64 total_displays = 2;
+    int64 total_skips = 3;
+    int64 total_display_time = 4;
 }

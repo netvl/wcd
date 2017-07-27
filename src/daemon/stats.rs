@@ -22,6 +22,7 @@ mod schema {
 }
 
 mod model {
+    use common::grpc::wcd;
     use super::schema::*;
 
     #[derive(Queryable)]
@@ -30,6 +31,17 @@ mod model {
         pub total_displays: i64,
         pub total_skips: i64,
         pub total_display_time: i64,
+    }
+
+    impl Into<wcd::ImageStatsInfo> for ImageStatistics {
+        fn into(self) -> wcd::ImageStatsInfo {
+            let mut proto = wcd::ImageStatsInfo::new();
+            proto.set_filename(self.filename);
+            proto.set_total_displays(self.total_displays);
+            proto.set_total_skips(self.total_skips);
+            proto.set_total_display_time(self.total_display_time);
+            proto
+        }
     }
 
     #[derive(Insertable)]
@@ -96,6 +108,14 @@ impl Stats {
             stats.borrow().register_display_time(file_name, time_sec)
         } else {
             Ok(())
+        }
+    }
+
+    pub fn load(&self) -> Result<Vec<model::ImageStatistics>> {
+        if let Some(ref stats) = self.daemon.state.lock().stats {
+            stats.borrow().load()
+        } else {
+            Ok(Vec::new())
         }
     }
 }
@@ -174,5 +194,13 @@ impl State {
 
             Ok(())
         })
+    }
+
+    fn load(&self) -> Result<Vec<model::ImageStatistics>> {
+        use self::schema::image_statistics::dsl::*;
+        
+        Ok(image_statistics
+            .order(filename.asc())
+            .load::<model::ImageStatistics>(&self.conn)?)
     }
 }
