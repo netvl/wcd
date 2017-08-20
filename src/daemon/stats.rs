@@ -13,7 +13,7 @@ use diesel::expression::bound::Bound;
 
 embed_migrations!();
 
-mod schema {
+pub mod schema {
     infer_schema!("stats.db");
 
     numeric_expr!(image_statistics::dsl::total_displays);
@@ -21,7 +21,7 @@ mod schema {
     numeric_expr!(image_statistics::dsl::total_display_seconds);
 }
 
-mod model {
+pub mod model {
     use common::grpc::wcd;
     use super::schema::*;
 

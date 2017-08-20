@@ -18,6 +18,14 @@ extern crate futures;
 extern crate futures_cpupool;
 extern crate tls_api;
 extern crate parking_lot;
+#[cfg(feature = "stats-analyzer")]
+extern crate gtk;
+#[cfg(feature = "stats-analyzer")]
+extern crate gdk;
+#[cfg(feature = "stats-analyzer")]
+extern crate gdk_pixbuf;
+#[cfg(feature = "stats-analyzer")]
+extern crate cairo;
 
 use std::borrow::Cow;
 use std::path::Path;
@@ -31,9 +39,11 @@ mod macros;
 mod common;
 mod cli;
 mod daemon;
+#[cfg(feature = "stats-analyzer")]
+mod stats_analyzer;
 
 fn main() {
-    let matches = App::new("wcd")
+    let app = App::new("wcd")
         .version(crate_version!())
         .author("Vladimir Matveev <vladimir.matweev@gmail.com>")
         .about("A wallpaper change daemon and its control utility.")
@@ -48,8 +58,13 @@ fn main() {
             "-v... 'Enable verbose output (up to two times)'"
         )
         .subcommand(daemon::subcommand())
-        .subcommands(cli::subcommands())
-        .get_matches();
+        .subcommands(cli::subcommands());
+
+    #[cfg(feature = "stats-analyzer")]
+    let app = app
+        .subcommand(stats_analyzer::subcommand());
+
+    let matches = app.get_matches();
 
     let log_level = match matches.occurrences_of("v") {
         0 => LogLevel::Normal,
@@ -63,6 +78,7 @@ fn main() {
 
     match matches.subcommand() {
         (daemon::SUBCOMMAND_NAME, Some(_)) => daemon::main(config_path),
+        (stats_analyzer::SUBCOMMAND_NAME, Some(_)) => stats_analyzer::main(config_path),
         (subcommand, Some(matches)) => cli::main(config_path, subcommand, matches),
         _ => unreachable!()
     }

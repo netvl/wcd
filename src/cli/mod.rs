@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::fmt;
 use std::borrow::Cow;
 use std::path::Path;
@@ -11,14 +10,6 @@ use common::proto::{ControlRequest, ControlResponse, StatusInfo, PlaylistInfo, C
 use self::client::Client;
 
 mod client;
-
-macro_rules! abort {
-    ($code:expr) => {::std::process::exit($code)};
-    ($code:expr, $($args:tt)*) => {{
-        let _ = writeln!(&mut ::std::io::stderr(), $($args)*);
-        ::std::process::exit($code);
-    }}
-}
 
 pub fn subcommands() -> Vec<App<'static, 'static>> {
     vec![
@@ -40,7 +31,6 @@ pub fn subcommands() -> Vec<App<'static, 'static>> {
 }
 
 pub fn main(config_path: Cow<Path>, subcommand: &str, matches: &ArgMatches) {
-
     let config = config::load(&config_path)
         .unwrap_or_else(|e| abort!(1, "Cannot load configuration file {}: {}", config_path.display(), e));
 

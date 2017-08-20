@@ -10,10 +10,10 @@ use parking_lot::ReentrantMutex;
 
 use common::config;
 
+pub mod stats;
 mod control;
 mod scheduler;
 mod processor;
-mod stats;
 
 pub const SUBCOMMAND_NAME: &'static str = "daemon";
 

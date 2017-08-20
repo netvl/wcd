@@ -1,4 +1,3 @@
-
 macro_rules! simple_error {
     ($name:ident, $description:expr) => {
         #[derive(Debug)]
@@ -16,4 +15,13 @@ macro_rules! simple_error {
             }
         }
     };
+}
+
+macro_rules! abort {
+    ($code:expr) => {::std::process::exit($code)};
+    ($code:expr, $($args:tt)*) => {{
+        use ::std::io::Write;
+        let _ = writeln!(&mut ::std::io::stderr(), $($args)*);
+        ::std::process::exit($code);
+    }}
 }
