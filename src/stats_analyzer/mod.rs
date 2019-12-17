@@ -11,7 +11,7 @@ use gtk::prelude::*;
 use gdk_pixbuf::{Pixbuf, InterpType};
 use cairo;
 
-use common::config;
+use crate::common::config;
 
 pub const SUBCOMMAND_NAME: &str = "stats-analyzer";
 

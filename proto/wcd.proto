@@ -5,6 +5,7 @@ package wcd;
 
 service Wcd {
     rpc TriggerChange (Empty) returns (Empty) {}
+    rpc TriggerUpdate (Empty) returns (Empty) {}
     rpc RefreshPlaylists (Empty) returns (Empty) {}
     rpc Terminate (Empty) returns (Empty) {}
     rpc GetStatus (Empty) returns (StatusInfo) {}

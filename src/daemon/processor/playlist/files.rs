@@ -2,8 +2,8 @@ use std::io;
 use std::fs;
 use std::path::Path;
 
-use common::config::ValidatedPlaylist;
-use daemon::processor::playlist::Image;
+use crate::common::config::ValidatedPlaylist;
+use crate::daemon::processor::playlist::Image;
 
 pub fn scan_playlist(config: &ValidatedPlaylist) -> Vec<Image> {
     let mut files: Vec<_> = Vec::new();

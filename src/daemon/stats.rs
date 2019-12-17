@@ -1,28 +1,25 @@
 use std::path::Path;
 use std::error::Error;
-use std::ops::Add;
 
 use diesel;
 use diesel::*;
-use diesel::sqlite::{Sqlite, SqliteConnection};
-use diesel::types::ops as dtops;
-use diesel::expression::operators as deoperators;
-use diesel::expression::ops as deops;
-use diesel::query_builder::update_statement::changeset::Changeset;
-use diesel::expression::bound::Bound;
+use diesel::sqlite::SqliteConnection;
 
 embed_migrations!();
 
 pub mod schema {
-    infer_schema!("stats.db");
-
-    numeric_expr!(image_statistics::dsl::total_displays);
-    numeric_expr!(image_statistics::dsl::total_skips);
-    numeric_expr!(image_statistics::dsl::total_display_seconds);
+    table! {
+        image_statistics (filename) {
+            filename -> Text,
+            total_displays -> BigInt,
+            total_skips -> BigInt,
+            total_display_seconds -> BigInt,
+        }
+    }
 }
 
 pub mod model {
-    use common::grpc::wcd;
+    use crate::common::grpc::wcd;
     use super::schema::*;
 
     #[derive(Queryable)]
@@ -51,31 +48,7 @@ pub mod model {
     }
 }
 
-mod utils {
-    use diesel::query_builder::*;
-    use diesel::query_builder::insert_statement::Insert;
-    use diesel::result::QueryResult;
-    use diesel::sqlite::Sqlite;
-    use diesel::expression::operators::Or;
-
-    #[derive(Debug, Copy, Clone)]
-    pub struct Ignore;
-
-    impl QueryFragment<Sqlite> for Ignore {
-        fn walk_ast(&self, mut out: AstPass<Sqlite>) -> QueryResult<()> {
-            out.push_sql("IGNORE");
-            Ok(())
-        }
-    }
-
-    impl_query_id!(Ignore);
-
-    pub fn insert_or_ignore<T: ?Sized>(records: &T) -> IncompleteInsertStatement<&T, Or<Insert, Ignore>> {
-        IncompleteInsertStatement::new(records, Or::new(Insert, Ignore))
-    }
-}
-
-pub type Result<T> = ::std::result::Result<T, Box<Error>>;  // unit for now
+pub type Result<T> = ::std::result::Result<T, Box<dyn Error>>;  // unit for now
 
 #[derive(Clone)]
 pub struct Stats {
@@ -161,35 +134,52 @@ impl State {
 
     fn register_displays(&self, file_name: &str, n: i64) -> Result<()> {
         debug!("Registering displays for {}: {}", file_name, n);
-        self.update_number(file_name, self::schema::image_statistics::dsl::total_displays, n)
-    }
-
-    fn register_skips(&self, file_name: &str, n: i64) -> Result<()> {
-        debug!("Registering skips for {}: {}", file_name, n);
-        self.update_number(file_name, self::schema::image_statistics::dsl::total_skips, n)
-    }
-
-    fn register_display_time(&self, file_name: &str, time_sec: i64) -> Result<()> {
-        debug!("Registering display time for {}: {}", file_name, time_sec);
-        self.update_number(file_name, self::schema::image_statistics::dsl::total_display_seconds, time_sec)
-    }
-
-    fn update_number<F>(&self, file_name: &str, field: F, n: i64) -> Result<()>
-        where F: Expression + Column<Table=self::schema::image_statistics::table> + Copy,
-              F: AppearsOnTable<self::schema::image_statistics::table>,
-              F: Add<i64, Output=deops::Add<F, Bound<diesel::types::BigInt, i64>>>,
-              F::SqlType: dtops::Add<Output=F::SqlType>,
-              deoperators::Eq<F, F::Output>: Changeset<Sqlite>
-    {
+        let field = self::schema::image_statistics::dsl::total_displays;
         self.conn.transaction(|| {
             use self::schema::image_statistics::dsl::*;
 
-            utils::insert_or_ignore(&model::NewImageStatistics { filename: file_name, })
-                .into(image_statistics)
+            diesel::insert_or_ignore_into(image_statistics)
+                .values(&model::NewImageStatistics { filename: file_name, })
                 .execute(&self.conn)?;
 
             diesel::update(image_statistics.filter(filename.eq(file_name)))
                 .set(field.eq(field + n))
+                .execute(&self.conn)?;
+
+            Ok(())
+        })
+    }
+
+    fn register_skips(&self, file_name: &str, n: i64) -> Result<()> {
+        debug!("Registering skips for {}: {}", file_name, n);
+        let field = self::schema::image_statistics::dsl::total_skips;
+        self.conn.transaction(|| {
+            use self::schema::image_statistics::dsl::*;
+
+            diesel::insert_or_ignore_into(image_statistics)
+                .values(&model::NewImageStatistics { filename: file_name, })
+                .execute(&self.conn)?;
+
+            diesel::update(image_statistics.filter(filename.eq(file_name)))
+                .set(field.eq(field + n))
+                .execute(&self.conn)?;
+
+            Ok(())
+        })
+    }
+
+    fn register_display_time(&self, file_name: &str, time_sec: i64) -> Result<()> {
+        debug!("Registering display time for {}: {}", file_name, time_sec);
+        let field = self::schema::image_statistics::dsl::total_display_seconds;
+        self.conn.transaction(|| {
+            use self::schema::image_statistics::dsl::*;
+
+            diesel::insert_or_ignore_into(image_statistics)
+                .values(&model::NewImageStatistics { filename: file_name, })
+                .execute(&self.conn)?;
+
+            diesel::update(image_statistics.filter(filename.eq(file_name)))
+                .set(field.eq(field + time_sec))
                 .execute(&self.conn)?;
 
             Ok(())

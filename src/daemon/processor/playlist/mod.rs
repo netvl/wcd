@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
-use rand::{self, Rng};
+use rand;
+use rand::seq::SliceRandom;
 
-use common::config::{ValidatedPlaylist, ChangeMode};
-use daemon::processor::command::ChangeCommand;
+use crate::common::config::{ValidatedPlaylist, ChangeMode};
+use crate::daemon::processor::command::ChangeCommand;
 
 mod files;
 
@@ -37,7 +38,7 @@ impl Playlist {
         let images = files::scan_playlist(&config);
         let mut unused: Vec<_> = images.clone();
         if config.mode == ChangeMode::Random {
-            rand::thread_rng().shuffle(&mut unused);
+            unused.shuffle(&mut rand::thread_rng());
         }
         Playlist {
             images: images,
@@ -57,7 +58,7 @@ impl Playlist {
 
     fn shuffle_unused_if_needed(&mut self) {
         if self.config.mode == ChangeMode::Random {
-            rand::thread_rng().shuffle(&mut self.unused);
+            self.unused.shuffle(&mut rand::thread_rng());
         }
     }
 

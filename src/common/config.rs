@@ -6,11 +6,13 @@ use std::collections::HashMap;
 
 use toml;
 use serde::de::Error;
-use serde::{Deserialize, Deserializer};
+use serde::Deserializer;
+use serde::Deserialize;
+use serde_derive::Deserialize;
 use chrono::Duration;
 use shellexpand;
 
-use common::util;
+use crate::common::util;
 
 quick_error! {
     #[derive(Debug)]

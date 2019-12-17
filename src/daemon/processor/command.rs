@@ -4,8 +4,8 @@ use std::ffi::OsStr;
 
 use lazy_scoped::Lazy;
 
-use daemon::processor::playlist::Image;
-use common::config::ValidatedPlaylist;
+use crate::daemon::processor::playlist::Image;
+use crate::common::config::ValidatedPlaylist;
 
 pub struct ChangeCommand<'a> {
     name: &'a str,

@@ -1,11 +1,14 @@
 use std::collections::HashMap;
 
-use common::config;
-use common::grpc::wcd;
+use serde_derive::{Serialize, Deserialize};
+
+use crate::common::config;
+use crate::common::grpc::wcd;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ControlRequest {
     TriggerChange,
+    TriggerUpdate,
     RefreshPlaylists,
     Terminate,
 
@@ -17,6 +20,7 @@ pub enum ControlRequest {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ControlResponse {
     TriggerChangeOk,
+    TriggerUpdateOk,
     RefreshPlaylistsOk,
     TerminateOk,
 

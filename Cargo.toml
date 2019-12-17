@@ -1,56 +1,58 @@
 [package]
 name = "wcd"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Vladimir Matveev <vladimir.matweev@gmail.com>"]
+edition = "2018"
 
 [features]
-default = ["stats-analyzer"]
+#default = ["stats-analyzer"]
+default = []
 stats-analyzer = ["gdk-pixbuf", "gtk", "gdk", "cairo-rs", "gtk/v3_20"]
 
 [build-dependencies]
-protoc-rust-grpc = "0.2"
+protoc-rust-grpc = "0.6"
 
 [dependencies]
 # command-line parsing
-clap = "2.25"
+structopt = "0.3"
 
 # GTK UI
-gtk = { version = "0.1", optional = true }
-gdk = { version = "0.5", optional = true }
-cairo-rs = { version = "0.1", optional = true }
-gdk-pixbuf = { version = "0.1", optional = true }
+gtk = { version = "0.8", optional = true }
+gdk = { version = "0.12", optional = true }
+cairo-rs = { version = "0.8", optional = true }
+gdk-pixbuf = { version = "0.8", optional = true }
 
 # logging
-log = "0.3"
+log = "0.4.8"
 
 # serialization
 serde = "1.0"
 serde_derive = "1.0"
 
 # data formats
-toml = "0.4"
+toml = "0.5"
 
 # networking
-grpc = "0.2"
-protobuf = "1.4"
-futures = "0.1"
+grpc = "0.6"
+protobuf = "2.8"
+futures = "0.3"
 futures-cpupool = "0.1"
-tls-api = "0.1"
+tls-api = "0.2"
 
 # database
-diesel = { version = "0.14", features = ["sqlite", "chrono"] }
-diesel_codegen = { version = "0.14", features = ["sqlite"] }
+diesel = { version = "1.4", features = ["sqlite", "chrono"] }
+diesel_migrations = { version = "1.4" }
 
 # various utilities
 quick-error = "1.1"
-rand = "0.3"
+rand = "0.7"
 chrono = "0.4"
 shellexpand = "1.0"
 appdirs = "0.2"
 lazy-scoped = "0.1"
-parking_lot = "0.4"
+parking_lot = "0.10"
 
 [dependencies.log4rs]
-version = "0.7"
+version = "0.9"
 default-features = false
 features = ["console_appender", "pattern_encoder"]

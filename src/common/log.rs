@@ -2,7 +2,7 @@ use log4rs;
 use log4rs::config::*;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::encode::pattern::PatternEncoder;
-use log::LogLevelFilter;
+use log::LevelFilter;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum LogLevel {
@@ -26,14 +26,14 @@ fn build_log_config(level: LogLevel) -> Config {
 
     let app_logger = Logger::builder()
         .build("wcd", match level {
-            LogLevel::Normal => LogLevelFilter::Info,
-            LogLevel::Debug => LogLevelFilter::Debug,
-            LogLevel::Trace => LogLevelFilter::Trace,
+            LogLevel::Normal => LevelFilter::Info,
+            LogLevel::Debug => LevelFilter::Debug,
+            LogLevel::Trace => LevelFilter::Trace,
         });
 
     let root = Root::builder()
         .appender("console")
-        .build(LogLevelFilter::Error);
+        .build(LevelFilter::Error);
 
     Config::builder()
         .appender(appender)

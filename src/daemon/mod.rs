@@ -1,28 +1,19 @@
-use std::borrow::Cow;
 use std::path::Path;
 use std::process;
 use std::sync::Arc;
 use std::cell::RefCell;
 
-use clap::App;
 use chrono::Duration;
 use parking_lot::ReentrantMutex;
 
-use common::config;
+use crate::common::config;
 
 pub mod stats;
 mod control;
 mod scheduler;
 mod processor;
 
-pub const SUBCOMMAND_NAME: &'static str = "daemon";
-
-pub fn subcommand() -> App<'static, 'static> {
-    App::new(SUBCOMMAND_NAME)
-        .about("Starts the wallpaper change daemon")
-}
-
-pub fn main(config_path: Cow<Path>) {
+pub fn main(config_path: &Path) {
     let config = config::load(&config_path).unwrap_or_else(|e| {
         error!("Error loading configuration from {}: {}", config_path.display(), e);
         process::exit(1);

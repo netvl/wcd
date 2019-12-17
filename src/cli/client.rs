@@ -1,12 +1,14 @@
 use std::error::Error;
 use std::result;
 
-use common::proto::GrpcResponseExt;
-use common::grpc::wcd;
-use common::grpc::wcd_grpc::{WcdClient, Wcd};
-use common::proto::{ControlRequest, ControlResponse};
+use grpc::ClientStubExt;
 
-type Result<T> = result::Result<T, Box<Error>>;
+use crate::common::proto::GrpcResponseExt;
+use crate::common::grpc::wcd;
+use crate::common::grpc::wcd_grpc::{WcdClient, Wcd};
+use crate::common::proto::{ControlRequest, ControlResponse};
+
+type Result<T> = result::Result<T, Box<dyn Error>>;
 
 pub struct Client {
     grpc: WcdClient,
@@ -33,6 +35,9 @@ impl Client {
             ControlRequest::TriggerChange =>
                 Ok(self.grpc.trigger_change(Default::default(), wcd::Empty::new()).wait_drop_metadata()
                     .map(|_| ControlResponse::TriggerChangeOk)?),
+            ControlRequest::TriggerUpdate =>
+                Ok(self.grpc.trigger_update(Default::default(), wcd::Empty::new()).wait_drop_metadata()
+                    .map(|_| ControlResponse::TriggerUpdateOk)?),
             ControlRequest::RefreshPlaylists =>
                 Ok(self.grpc.refresh_playlists(Default::default(), wcd::Empty::new()).wait_drop_metadata()
                     .map(|_| ControlResponse::RefreshPlaylistsOk)?),

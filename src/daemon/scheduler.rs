@@ -5,10 +5,10 @@ use std::collections::HashMap;
 use chrono::{Duration, DateTime, Utc};
 use parking_lot::ReentrantMutexGuard;
 
-use common::util;
+use crate::common::util;
 
 struct JobState {
-    action_factory: Box<FnMut() -> Box<FnMut() + Send + 'static> + Send + 'static>,
+    action_factory: Box<dyn FnMut() -> Box<dyn FnMut() + Send + 'static> + Send + 'static>,
     last_execution_timestamp: DateTime<Utc>,
     trigger_duration: Option<Duration>,
 }

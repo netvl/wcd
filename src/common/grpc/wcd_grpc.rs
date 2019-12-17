@@ -3,7 +3,7 @@
 
 // https://github.com/Manishearth/rust-clippy/issues/702
 #![allow(unknown_lints)]
-#![allow(clippy)]
+#![allow(clippy::all)]
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
@@ -24,6 +24,8 @@
 pub trait Wcd {
     fn trigger_change(&self, o: ::grpc::RequestOptions, p: super::wcd::Empty) -> ::grpc::SingleResponse<super::wcd::Empty>;
 
+    fn trigger_update(&self, o: ::grpc::RequestOptions, p: super::wcd::Empty) -> ::grpc::SingleResponse<super::wcd::Empty>;
+
     fn refresh_playlists(&self, o: ::grpc::RequestOptions, p: super::wcd::Empty) -> ::grpc::SingleResponse<super::wcd::Empty>;
 
     fn terminate(&self, o: ::grpc::RequestOptions, p: super::wcd::Empty) -> ::grpc::SingleResponse<super::wcd::Empty>;
@@ -38,8 +40,9 @@ pub trait Wcd {
 // client
 
 pub struct WcdClient {
-    grpc_client: ::grpc::Client,
+    grpc_client: ::std::sync::Arc<::grpc::Client>,
     method_TriggerChange: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::wcd::Empty, super::wcd::Empty>>,
+    method_TriggerUpdate: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::wcd::Empty, super::wcd::Empty>>,
     method_RefreshPlaylists: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::wcd::Empty, super::wcd::Empty>>,
     method_Terminate: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::wcd::Empty, super::wcd::Empty>>,
     method_GetStatus: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::wcd::Empty, super::wcd::StatusInfo>>,
@@ -47,12 +50,18 @@ pub struct WcdClient {
     method_GetStatistics: ::std::sync::Arc<::grpc::rt::MethodDescriptor<super::wcd::Empty, super::wcd::StatsInfo>>,
 }
 
-impl WcdClient {
-    pub fn with_client(grpc_client: ::grpc::Client) -> Self {
+impl ::grpc::ClientStub for WcdClient {
+    fn with_client(grpc_client: ::std::sync::Arc<::grpc::Client>) -> Self {
         WcdClient {
             grpc_client: grpc_client,
             method_TriggerChange: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
                 name: "/wcd.Wcd/TriggerChange".to_string(),
+                streaming: ::grpc::rt::GrpcStreaming::Unary,
+                req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+            }),
+            method_TriggerUpdate: ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
+                name: "/wcd.Wcd/TriggerUpdate".to_string(),
                 streaming: ::grpc::rt::GrpcStreaming::Unary,
                 req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
                 resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
@@ -89,22 +98,15 @@ impl WcdClient {
             }),
         }
     }
-
-    pub fn new_plain(host: &str, port: u16, conf: ::grpc::ClientConf) -> ::grpc::Result<Self> {
-        ::grpc::Client::new_plain(host, port, conf).map(|c| {
-            WcdClient::with_client(c)
-        })
-    }
-    pub fn new_tls<C : ::tls_api::TlsConnector>(host: &str, port: u16, conf: ::grpc::ClientConf) -> ::grpc::Result<Self> {
-        ::grpc::Client::new_tls::<C>(host, port, conf).map(|c| {
-            WcdClient::with_client(c)
-        })
-    }
 }
 
 impl Wcd for WcdClient {
     fn trigger_change(&self, o: ::grpc::RequestOptions, p: super::wcd::Empty) -> ::grpc::SingleResponse<super::wcd::Empty> {
         self.grpc_client.call_unary(o, p, self.method_TriggerChange.clone())
+    }
+
+    fn trigger_update(&self, o: ::grpc::RequestOptions, p: super::wcd::Empty) -> ::grpc::SingleResponse<super::wcd::Empty> {
+        self.grpc_client.call_unary(o, p, self.method_TriggerUpdate.clone())
     }
 
     fn refresh_playlists(&self, o: ::grpc::RequestOptions, p: super::wcd::Empty) -> ::grpc::SingleResponse<super::wcd::Empty> {
@@ -148,6 +150,18 @@ impl WcdServer {
                     {
                         let handler_copy = handler_arc.clone();
                         ::grpc::rt::MethodHandlerUnary::new(move |o, p| handler_copy.trigger_change(o, p))
+                    },
+                ),
+                ::grpc::rt::ServerMethod::new(
+                    ::std::sync::Arc::new(::grpc::rt::MethodDescriptor {
+                        name: "/wcd.Wcd/TriggerUpdate".to_string(),
+                        streaming: ::grpc::rt::GrpcStreaming::Unary,
+                        req_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                        resp_marshaller: Box::new(::grpc::protobuf::MarshallerProtobuf),
+                    }),
+                    {
+                        let handler_copy = handler_arc.clone();
+                        ::grpc::rt::MethodHandlerUnary::new(move |o, p| handler_copy.trigger_update(o, p))
                     },
                 ),
                 ::grpc::rt::ServerMethod::new(

@@ -1,37 +1,17 @@
 use std::fmt;
-use std::borrow::Cow;
 use std::path::Path;
 
-use clap::{App, ArgMatches};
 use chrono::{Local, TimeZone};
 
-use common::config;
-use common::proto::{ControlRequest, ControlResponse, StatusInfo, PlaylistInfo, ChangeMode};
+use crate::common::config;
+use crate::common::proto::{ControlRequest, ControlResponse, StatusInfo, PlaylistInfo, ChangeMode};
+use crate::Command;
 use self::client::Client;
 
 mod client;
 
-pub fn subcommands() -> Vec<App<'static, 'static>> {
-    vec![
-        App::new("trigger")
-            .about("Triggers the wallpaper change in the current playlist"),
-        App::new("refresh")
-            .about("Makes wcd rescan all directories in all playlist, potentially loading new files"),
-        App::new("terminate")
-            .about("Shuts wcd down"),
-        App::new("status")
-            .about("Displays the current status information (available playlists, current items in them, timestamps, etc)"),
-        App::new("set-playlist")
-            .about("Sets the given playlist as the current one (may cause immediate wallpaper switch, depending on the selected playlist configuration)")
-            .args_from_usage(
-                "<NAME> 'Name of the playlist'
-                 --or-trigger 'If the given playlist is already current, trigger the wallpaper change'"
-            ),
-    ]
-}
-
-pub fn main(config_path: Cow<Path>, subcommand: &str, matches: &ArgMatches) {
-    let config = config::load(&config_path)
+pub(crate) fn main(config_path: &Path, command: Command) {
+    let config = config::load(config_path)
         .unwrap_or_else(|e| abort!(1, "Cannot load configuration file {}: {}", config_path.display(), e));
 
     let endpoint = config.common.endpoint;
@@ -39,27 +19,26 @@ pub fn main(config_path: Cow<Path>, subcommand: &str, matches: &ArgMatches) {
     let client = client::Client::new(&endpoint)
         .unwrap_or_else(|e| abort!(1, "Error creating a gRPC client: {}", e));
 
-    let req = match subcommand {
-        "trigger" => ControlRequest::TriggerChange,
-        "refresh" => ControlRequest::RefreshPlaylists,
-        "terminate" => ControlRequest::Terminate,
-        "status" => ControlRequest::GetStatus,
-        "set-playlist" => {
-            let playlist_name = matches.value_of("NAME").unwrap();
-
-            if matches.is_present("or-trigger") {
+    let req = match command {
+        Command::Trigger { keep: false, } => ControlRequest::TriggerChange,
+        Command::Trigger { keep: true, } => ControlRequest::TriggerUpdate,
+        Command::Refresh => ControlRequest::RefreshPlaylists,
+        Command::Terminate => ControlRequest::Terminate,
+        Command::Status => ControlRequest::GetStatus,
+        Command::SetPlaylist { name: playlist_name, or_trigger, } => {
+            if or_trigger {
                 match make_request(&client, ControlRequest::GetStatus) {
                     ControlResponse::StatusInfoOk(StatusInfo { current_playlist, .. }) => {
                         if playlist_name == current_playlist {
                             ControlRequest::TriggerChange
                         } else {
-                            ControlRequest::ChangePlaylist(playlist_name.into())
+                            ControlRequest::ChangePlaylist(playlist_name.clone())
                         }
                     }
                     _ => abort!(1, "Unexpected server response when getting current playlist")
                 }
             } else {
-                ControlRequest::ChangePlaylist(playlist_name.into())
+                ControlRequest::ChangePlaylist(playlist_name.clone())
             }
         }
         _ => unreachable!()
@@ -75,7 +54,7 @@ fn make_request(client: &Client, req: ControlRequest) -> ControlResponse {
 
 fn display_response(resp: ControlResponse) {
     match resp {
-        ControlResponse::TriggerChangeOk | ControlResponse::RefreshPlaylistsOk |
+        ControlResponse::TriggerChangeOk | ControlResponse::TriggerUpdateOk | ControlResponse::RefreshPlaylistsOk |
         ControlResponse::TerminateOk | ControlResponse::ChangePlaylistOk => {}
         ControlResponse::ChangePlaylistFailed(msg) => abort!(1, "Failed to change playlist: {}", msg),
         ControlResponse::StatusInfoOk(StatusInfo { playlists, current_playlist, last_update }) => {

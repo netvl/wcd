@@ -3,10 +3,10 @@ use std::error::Error;
 
 use chrono::{DateTime, Utc};
 
-use common::proto;
-use common::config::ValidatedServerConfig;
-use daemon::processor::playlist::Playlist;
-use daemon::stats::Stats;
+use crate::common::proto;
+use crate::common::config::ValidatedServerConfig;
+use crate::daemon::processor::playlist::Playlist;
+use crate::daemon::stats::Stats;
 
 mod playlist;
 mod command;
@@ -18,7 +18,7 @@ pub const UPDATE_STATS_JOB_NAME: &'static str = "update_stats";
 pub const UPDATE_STATS_INTERVAL_SECS: i64 = 5;
 pub const SKIP_INTERVAL_SECS: i64 = 10;
 
-pub type ProcessorResult<T> = Result<T, Box<Error>>;
+pub type ProcessorResult<T> = Result<T, Box<dyn Error>>;
 
 pub struct State {
     playlists: Vec<Playlist>,
@@ -136,7 +136,7 @@ impl<'a> StateActions<'a> {
             } { }
         }
 
-        self.with_stats_and_current_path::<_, Box<Error>>(|stats, current| {
+        self.with_stats_and_current_path::<_, Box<dyn Error>>(|stats, current| {
             stats.register_displays(current, 1)?;
 
             if let Some(last_trigger_time) = self.state.last_trigger_time {
@@ -181,7 +181,7 @@ impl<'a> StateActions<'a> {
             None => return Err(MissingTimestamp.into())
         };
 
-        fn playlists_by_name<'a>(state: &'a State) -> Box<Iterator<Item=(&'a str, &'a Playlist)> + 'a> {
+        fn playlists_by_name<'a>(state: &'a State) -> Box<dyn Iterator<Item=(&'a str, &'a Playlist)> + 'a> {
             Box::new(
                 state.playlist_indices.iter()
                     .map(move |(name, &idx)| (&**name, &state.playlists[idx]))

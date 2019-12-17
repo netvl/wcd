@@ -2,10 +2,10 @@ use std::thread::{self, JoinHandle};
 use std::sync::{Arc, Barrier};
 use std::iter::FromIterator;
 
-use common::grpc::wcd;
-use common::grpc::wcd_grpc::{WcdServer, Wcd};
-use daemon::processor::Processor;
-use daemon::stats::Stats;
+use crate::common::grpc::wcd;
+use crate::common::grpc::wcd_grpc::{WcdServer, Wcd};
+use crate::daemon::processor::Processor;
+use crate::daemon::stats::Stats;
 
 pub struct Control {
     endpoint: String,
@@ -64,7 +64,7 @@ impl Control {
             ::grpc::SingleResponse::completed(t)
         }
 
-        fn error<T: ::protobuf::MessageStatic>(msg: String) -> ::grpc::SingleResponse<T> {
+        fn error<T: protobuf::Message + 'static>(msg: String) -> ::grpc::SingleResponse<T> {
             let mut md = ::grpc::Metadata::new();
             md.add(::grpc::MetadataKey::from("error"), msg.into_bytes().into());
             ::grpc::SingleResponse::completed_with_metadata(md, T::new())
@@ -76,6 +76,10 @@ impl Control {
                     Ok(_) => completed(wcd::Empty::new()),
                     Err(e) => error(e.to_string()),
                 }
+            }
+
+            fn trigger_update(&self, _: ::grpc::RequestOptions, _: wcd::Empty) -> ::grpc::SingleResponse<wcd::Empty> {
+                unimplemented!()
             }
 
             fn refresh_playlists(&self, _: ::grpc::RequestOptions, _: wcd::Empty) -> ::grpc::SingleResponse<wcd::Empty> {
