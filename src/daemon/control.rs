@@ -79,7 +79,8 @@ impl Control {
             }
 
             fn trigger_update(&self, _: ::grpc::RequestOptions, _: wcd::Empty) -> ::grpc::SingleResponse<wcd::Empty> {
-                unimplemented!()
+                self.processor.apply_current_image();
+                completed(wcd::Empty::new())
             }
 
             fn refresh_playlists(&self, _: ::grpc::RequestOptions, _: wcd::Empty) -> ::grpc::SingleResponse<wcd::Empty> {

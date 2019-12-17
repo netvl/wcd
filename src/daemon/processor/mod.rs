@@ -123,6 +123,11 @@ impl<'a> StateActions<'a> {
             self.state.playlists[self.state.current_playlist].config().change_every
         );
     }
+
+    fn apply_current_image(&mut self) {
+        let playlist = &mut self.state.playlists[self.state.current_playlist];
+        playlist.apply_current_image();
+    }
     
     fn trigger(&mut self, simulate: bool) -> ProcessorResult<()> {
         self.state.last_used_image = self.state.playlists[self.state.current_playlist].current()
