@@ -11,9 +11,8 @@ extern crate gdk_pixbuf;
 #[cfg(feature = "stats-analyzer")]
 extern crate cairo;
 
-use std::path::PathBuf;
-
 use structopt::StructOpt;
+use structopt::clap::AppSettings::{ColoredHelp, SubcommandRequiredElseHelp, VersionlessSubcommands};
 
 use common::log::LogLevel;
 
@@ -27,10 +26,13 @@ mod stats_analyzer;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "wcd", about = "A wallpaper change daemon and its control utility.")]
+#[structopt(global_setting(ColoredHelp), global_setting(VersionlessSubcommands), setting(SubcommandRequiredElseHelp))]
 struct Options {
+    /// Path to the configuration file.
     #[structopt(short, long, default_value = "~/.config/wcd/config.toml")]
-    config: PathBuf,
+    config: String,
 
+    /// Enable verbose output (up to two times).
     #[structopt(short, long, parse(from_occurrences))]
     verbose: u32,
 
@@ -48,9 +50,9 @@ enum Command {
         #[structopt(short, long)]
         keep: bool,
     },
-    /// Makes wcd rescan all directories in all playlists, potentially loading new files.
+    /// Makes the wallpaper change daemon rescan all directories in all playlists, potentially loading new files.
     Refresh,
-    /// Shuts wcd down.
+    /// Shuts the wallpaper change daemon down.
     Terminate,
     /// Displays the current status information (available playlists, current items in them, timestamps, etc).
     Status,
@@ -80,10 +82,11 @@ fn main() {
     };
     common::log::configure_or_panic(log_level);
 
+    let config_path = common::util::str_to_path(&options.config);
     match options.cmd {
-        Command::Start => daemon::main(&options.config),
+        Command::Start => daemon::main(&config_path),
         #[cfg(target_feature = "stats-analyzer")]
         Command::StatsAnalyzer => stats_analyzer::main(&options.config),
-        subcommand => cli::main(&options.config, subcommand),
+        subcommand => cli::main(&config_path, subcommand),
     }
 }

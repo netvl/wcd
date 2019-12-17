@@ -90,6 +90,10 @@ impl Processor {
         self.with_actions(|a| a.start());
     }
 
+    pub fn apply_current_image(&self) {
+        self.with_actions(|mut a| a.apply_current_image());
+    }
+
     pub fn trigger(&self, simulate: bool) -> ProcessorResult<()> {
         self.with_actions(|mut a| a.trigger(simulate))
     }
