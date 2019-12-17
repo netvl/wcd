@@ -43,7 +43,7 @@ struct Options {
 #[derive(Debug, StructOpt)]
 enum Command {
     /// Starts the wallpaper change daemon.
-    Start,
+    Daemon,
     /// Triggers the wallpaper change in the current playlist.
     Trigger {
         /// Refresh the currently selected wallpaper.
@@ -84,7 +84,7 @@ fn main() {
 
     let config_path = common::util::str_to_path(&options.config);
     match options.cmd {
-        Command::Start => daemon::main(&config_path),
+        Command::Daemon => daemon::main(&config_path),
         #[cfg(target_feature = "stats-analyzer")]
         Command::StatsAnalyzer => stats_analyzer::main(&options.config),
         subcommand => cli::main(&config_path, subcommand),
